@@ -25,53 +25,61 @@ struct FilmCardView: View {
             // on the pasteboard. The menu only appears once a city is selected
             // (always true behind the city gate), since the link is city-scoped.
             PosterView(film: film)
-                .contextMenu {
-                    if let citySlug = prefs.selectedCity {
-                        ShareLink(item: FilmShareLink.url(origin: prefs.selectedCountry.baseURL.absoluteString, for: film, citySlug: citySlug), subject: Text(film.title)) {
-                            Label("filmcard.share", systemImage: "square.and.arrow.up")
-                        }
-                        .accessibilityIdentifier(A11y.FilmCard.share)
-                        Button {
-                            UIPasteboard.general.string = FilmShareLink.url(origin: prefs.selectedCountry.baseURL.absoluteString, for: film, citySlug: citySlug).absoluteString
-                        } label: {
-                            Label("filmcard.copy_link", systemImage: "link")
-                        }
-                        .accessibilityIdentifier(A11y.FilmCard.copyLink)
-                    }
-                }
-            VStack(alignment: .leading, spacing: spacing.sectionSpacing) {
-                Text(film.title)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.white)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .multilineTextAlignment(.leading)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                // Runtime + year only — the listing card drops genres
-                // (they stay on the detail screen).
-                MetaPillsView(
-                    runtimeMinutes: film.runtimeMinutes,
-                    releaseYear: film.releaseYear,
-                    ageRating: film.ageRating
-                )
-                if !film.ratings.isEmpty {
-                    RatingBadgesView(ratings: film.ratings)
-                        // Padding lives BELOW the FlowLayout (rather
-                        // than as VStack spacing or .padding(.top, …)
-                        // on ShowingsView) because FlowLayout's last
-                        // wrapped row was painting too close to the
-                        // next sibling — adding clearance INSIDE the
-                        // RatingBadgesView's frame guarantees the
-                        // bottom of every pill is followed by ≥ 14 pt
-                        // before any neighbour can paint, regardless
-                        // of which row the last pill ended up on.
-                        .padding(.bottom, spacing.ratingsBottom)
-                }
-                ShowingsView(film: film, showCinemaHeaders: showCinemaHeaders, truncatable: truncatable)
-            }
-            .padding(12)
+                .contextMenu { shareMenu }
+            details
         }
         .background(Color(red: 0.12, green: 0.12, blue: 0.18))
         .clipShape(RoundedRectangle(cornerRadius: PosterMetrics.cornerRadius))
+    }
+
+    @ViewBuilder
+    private var shareMenu: some View {
+        if let citySlug = prefs.selectedCity {
+            let url = FilmShareLink.url(origin: prefs.selectedCountry.baseURL.absoluteString, for: film, citySlug: citySlug)
+            ShareLink(item: url, subject: Text(film.title)) {
+                Label("filmcard.share", systemImage: "square.and.arrow.up")
+            }
+            .accessibilityIdentifier(A11y.FilmCard.share)
+            Button {
+                UIPasteboard.general.string = url.absoluteString
+            } label: {
+                Label("filmcard.copy_link", systemImage: "link")
+            }
+            .accessibilityIdentifier(A11y.FilmCard.copyLink)
+        }
+    }
+
+    private var details: some View {
+        VStack(alignment: .leading, spacing: spacing.sectionSpacing) {
+            Text(film.title)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(.white)
+                .fixedSize(horizontal: false, vertical: true)
+                .multilineTextAlignment(.leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            // Runtime + year only — the listing card drops genres
+            // (they stay on the detail screen).
+            MetaPillsView(
+                runtimeMinutes: film.runtimeMinutes,
+                releaseYear: film.releaseYear,
+                ageRating: film.ageRating
+            )
+            if !film.ratings.isEmpty {
+                RatingBadgesView(ratings: film.ratings)
+                    // Padding lives BELOW the FlowLayout (rather
+                    // than as VStack spacing or .padding(.top, …)
+                    // on ShowingsView) because FlowLayout's last
+                    // wrapped row was painting too close to the
+                    // next sibling — adding clearance INSIDE the
+                    // RatingBadgesView's frame guarantees the
+                    // bottom of every pill is followed by ≥ 14 pt
+                    // before any neighbour can paint, regardless
+                    // of which row the last pill ended up on.
+                    .padding(.bottom, spacing.ratingsBottom)
+            }
+            ShowingsView(film: film, showCinemaHeaders: showCinemaHeaders, truncatable: truncatable)
+        }
+        .padding(12)
     }
 }
 

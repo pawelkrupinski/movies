@@ -64,25 +64,7 @@ struct PosterChainImage<Loading: View, NoPoster: View>: View {
         // no cache-busting URL token needed (`PosterStore` bypasses
         // `URLCache` and never caches a failure).
         CachedAsyncImage(url: baseURL) { phase in
-            switch phase {
-            case .success(let image):
-                image.resizable()
-                    .aspectRatio(contentMode: contentMode)
-                    .accessibilityIdentifier(A11y.Poster.loaded)
-            case .empty:
-                loading()
-            case .failure:
-                if index < fallbacks.count {
-                    Color.clear.onAppear { index += 1 }
-                } else {
-                    noPoster().onAppear {
-                        exhausted = true
-                        scheduleNextRetry()
-                    }
-                }
-            @unknown default:
-                noPoster()
-            }
+            content(for: phase)
         }
         .id(generation)
         .onChange(of: scenePhase) { _, phase in
@@ -102,6 +84,29 @@ struct PosterChainImage<Loading: View, NoPoster: View>: View {
         .onChange(of: primary) { restartFromPrimary() }
         .onChange(of: fallbacks) { restartFromPrimary() }
         .onDisappear { retryTask?.cancel(); retryTask = nil }
+    }
+
+    @ViewBuilder
+    private func content(for phase: AsyncImagePhase) -> some View {
+        switch phase {
+        case .success(let image):
+            image.resizable()
+                .aspectRatio(contentMode: contentMode)
+                .accessibilityIdentifier(A11y.Poster.loaded)
+        case .empty:
+            loading()
+        case .failure:
+            if index < fallbacks.count {
+                Color.clear.onAppear { index += 1 }
+            } else {
+                noPoster().onAppear {
+                    exhausted = true
+                    scheduleNextRetry()
+                }
+            }
+        @unknown default:
+            noPoster()
+        }
     }
 
     private func scheduleNextRetry() {

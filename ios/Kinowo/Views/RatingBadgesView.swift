@@ -25,55 +25,75 @@ struct RatingBadgesView: View {
 
     var body: some View {
         FlowLayout(spacing: style.interPillGap, lineSpacing: 4) {
-            if ratings.imdb != nil || ratings.imdbPending {
-                Badge.twoTone(
-                    label:    "IMDb",
-                    value:    ratings.imdb.map(Film.Ratings.scoreText),
-                    accessibilityLabel: ratings.imdb == nil ? "rating.imdb.pending" : nil,
-                    url:      ratings.imdbURL,
-                    appURL:   ratings.imdbAppURL,
-                    open:     openURL,
-                    labelBg:  Color(red: 0.961, green: 0.773, blue: 0.094),  // #f5c518
-                    labelFg:  .black,
-                    valueFg:  Color(red: 0.961, green: 0.773, blue: 0.094),
-                    style:    style
-                )
-            }
-            if let metascore = ratings.metascore {
-                Badge.solid(
-                    value: "\(metascore)",
-                    url:   ratings.metacriticURL,
-                    bg:    metacriticColor(metascore),
-                    fg:    Color(red: 0.0, green: 0.13, blue: 0.0),           // #002200
-                    style: style
-                )
-            }
-            if let rottenTomatoes = ratings.rottenTomatoes {
-                let fresh = rottenTomatoes >= 60
-                Badge.twoTone(
-                    label:    "RT",
-                    value:    "\(rottenTomatoes)%",
-                    url:      ratings.rottenTomatoesURL,
-                    labelBg:  fresh ? Color(red: 0.980, green: 0.196, blue: 0.039)
-                                    : Color(red: 0.102, green: 0.561, blue: 0.102),  // #fa320a / #1a8f1a
-                    labelFg:  .white,
-                    valueFg:  fresh ? Color(red: 1.0,   green: 0.486, blue: 0.353)
-                                    : Color(red: 0.424, green: 0.816, blue: 0.424),  // #ff7c5a / #6cd06c
-                    style:    style
-                )
-            }
-            if ratings.filmweb != nil || ratings.filmwebPending {
-                Badge.twoTone(
-                    label:    "FW",
-                    value:    ratings.filmweb.map(Film.Ratings.scoreText),
-                    accessibilityLabel: ratings.filmweb == nil ? "rating.filmweb.pending" : nil,
-                    url:      ratings.filmwebURL,
-                    labelBg:  Color(red: 1.0,   green: 0.424, blue: 0.0),    // #ff6c00
-                    labelFg:  .white,
-                    valueFg:  Color(red: 1.0,   green: 0.612, blue: 0.290),  // #ff9c4a
-                    style:    style
-                )
-            }
+            imdbBadge
+            metacriticBadge
+            rottenTomatoesBadge
+            filmwebBadge
+        }
+    }
+
+    @ViewBuilder
+    private var imdbBadge: some View {
+        if ratings.imdb != nil || ratings.imdbPending {
+            Badge.twoTone(
+                label:    "IMDb",
+                value:    ratings.imdb.map(Film.Ratings.scoreText),
+                accessibilityLabel: ratings.imdb == nil ? "rating.imdb.pending" : nil,
+                url:      ratings.imdbURL,
+                appURL:   ratings.imdbAppURL,
+                open:     openURL,
+                labelBg:  Color(red: 0.961, green: 0.773, blue: 0.094),  // #f5c518
+                labelFg:  .black,
+                valueFg:  Color(red: 0.961, green: 0.773, blue: 0.094),
+                style:    style
+            )
+        }
+    }
+
+    @ViewBuilder
+    private var metacriticBadge: some View {
+        if let metascore = ratings.metascore {
+            Badge.solid(
+                value: "\(metascore)",
+                url:   ratings.metacriticURL,
+                bg:    metacriticColor(metascore),
+                fg:    Color(red: 0.0, green: 0.13, blue: 0.0),           // #002200
+                style: style
+            )
+        }
+    }
+
+    @ViewBuilder
+    private var rottenTomatoesBadge: some View {
+        if let rottenTomatoes = ratings.rottenTomatoes {
+            let fresh = rottenTomatoes >= 60
+            Badge.twoTone(
+                label:    "RT",
+                value:    "\(rottenTomatoes)%",
+                url:      ratings.rottenTomatoesURL,
+                labelBg:  fresh ? Color(red: 0.980, green: 0.196, blue: 0.039)
+                                : Color(red: 0.102, green: 0.561, blue: 0.102),  // #fa320a / #1a8f1a
+                labelFg:  .white,
+                valueFg:  fresh ? Color(red: 1.0,   green: 0.486, blue: 0.353)
+                                : Color(red: 0.424, green: 0.816, blue: 0.424),  // #ff7c5a / #6cd06c
+                style:    style
+            )
+        }
+    }
+
+    @ViewBuilder
+    private var filmwebBadge: some View {
+        if ratings.filmweb != nil || ratings.filmwebPending {
+            Badge.twoTone(
+                label:    "FW",
+                value:    ratings.filmweb.map(Film.Ratings.scoreText),
+                accessibilityLabel: ratings.filmweb == nil ? "rating.filmweb.pending" : nil,
+                url:      ratings.filmwebURL,
+                labelBg:  Color(red: 1.0,   green: 0.424, blue: 0.0),    // #ff6c00
+                labelFg:  .white,
+                valueFg:  Color(red: 1.0,   green: 0.612, blue: 0.290),  // #ff9c4a
+                style:    style
+            )
         }
     }
 
@@ -108,7 +128,32 @@ private enum Badge {
         valueFg: Color,
         style:   RatingPillStyle
     ) -> some View {
-        let body = HStack(spacing: 0) {
+        let body = tabs(label: label, value: value, labelBg: labelBg, labelFg: labelFg, valueFg: valueFg, style: style)
+            .modifier(OptionalAccessibilityLabel(label: accessibilityLabel))
+
+        if let appURL, let open {
+            // Try the app scheme first; `accepted == false` means no installed
+            // app claimed `imdb://`, so we open the web URL instead. A native
+            // open with a completion handler never raises Safari's "Cannot Open
+            // Page" alert the way navigating to the scheme in the browser would.
+            Button {
+                open(appURL) { accepted in
+                    if !accepted, let url { open(url) }
+                }
+            } label: { body }
+            .buttonStyle(.plain)
+        } else if let url {
+            Link(destination: url) { body }.buttonStyle(.plain)
+        } else {
+            body
+        }
+    }
+
+    /// The two tabs: the label, and the value when the pill has a rating.
+    private static func tabs(
+        label: String, value: String?, labelBg: Color, labelFg: Color, valueFg: Color, style: RatingPillStyle
+    ) -> some View {
+        HStack(spacing: 0) {
             Text(label)
                 .font(.system(size: style.labelFontSize, weight: style.labelWeight))
                 .foregroundColor(labelFg)
@@ -132,24 +177,6 @@ private enum Badge {
         // "7…" tails on narrow grid cells. FlowLayout wraps overlong
         // pills to a new line instead.
         .fixedSize(horizontal: true, vertical: false)
-        .modifier(OptionalAccessibilityLabel(label: accessibilityLabel))
-
-        if let appURL, let open {
-            // Try the app scheme first; `accepted == false` means no installed
-            // app claimed `imdb://`, so we open the web URL instead. A native
-            // open with a completion handler never raises Safari's "Cannot Open
-            // Page" alert the way navigating to the scheme in the browser would.
-            Button {
-                open(appURL) { accepted in
-                    if !accepted, let url { open(url) }
-                }
-            } label: { body }
-            .buttonStyle(.plain)
-        } else if let url {
-            Link(destination: url) { body }.buttonStyle(.plain)
-        } else {
-            body
-        }
     }
 
     /// Single-tab pill (Metacritic-shape) — one background, value

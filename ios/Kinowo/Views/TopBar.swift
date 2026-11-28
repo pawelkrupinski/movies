@@ -48,33 +48,7 @@ struct TopBar: View {
                 // way to the pills when the row is tight.
                 InlineSearchField(search: $search, focused: $searchFocused, scale: scale)
             }
-            Button(action: onTapFilters) {
-                // `line.3.horizontal.decrease.circle` is the funnel-in-
-                // circle SF Symbol the iOS app shipped with — the circle
-                // is baked into the glyph itself, no painted background.
-                // `.fill` variant swaps in when any filter axis is
-                // active so the icon tells you at a glance.
-                //
-                // Font size 30pt at scale 1.0 visually matches a pill's
-                // total height (14pt text + 2×7pt v-padding ≈ 28pt) — the
-                // SF Symbol's glyph height is a hair smaller than its font
-                // size, so 30pt lands the circle on the same baseline as
-                // the pill capsules either side.
-                Image(systemName: filtersActive
-                      ? "line.3.horizontal.decrease.circle.fill"
-                      : "line.3.horizontal.decrease.circle")
-                    .font(.system(size: 30 * scale))
-                    .foregroundStyle(filtersActive ? Color.accentColor : .primary)
-            }
-            .buttonStyle(BounceButtonStyle())
-            // The Image has no text label so XCUITest can't find the
-            // button by its accessibility label — give it both a label
-            // and an identifier. The label is also useful for
-            // VoiceOver users in production.
-            .accessibilityLabel("filtersheet.title")
-            .accessibilityIdentifier(A11y.TopBar.filtryButton)
-            // The lit state, for VoiceOver ("selected") and the UI tests.
-            .accessibilityAddTraits(filtersActive ? .isSelected : [])
+            filtersButton(scale: scale)
         }
         .padding(.horizontal, 10 * scale)
         // Tiny top padding so the pills hug the status bar; the
@@ -96,6 +70,36 @@ struct TopBar: View {
                 .accessibilityElement()
                 .accessibilityIdentifier(A11y.TopBar.bottomEdge)
         }
+    }
+
+    private func filtersButton(scale: CGFloat) -> some View {
+        Button(action: onTapFilters) {
+            // `line.3.horizontal.decrease.circle` is the funnel-in-
+            // circle SF Symbol the iOS app shipped with — the circle
+            // is baked into the glyph itself, no painted background.
+            // `.fill` variant swaps in when any filter axis is
+            // active so the icon tells you at a glance.
+            //
+            // Font size 30pt at scale 1.0 visually matches a pill's
+            // total height (14pt text + 2×7pt v-padding ≈ 28pt) — the
+            // SF Symbol's glyph height is a hair smaller than its font
+            // size, so 30pt lands the circle on the same baseline as
+            // the pill capsules either side.
+            Image(systemName: filtersActive
+                  ? "line.3.horizontal.decrease.circle.fill"
+                  : "line.3.horizontal.decrease.circle")
+                .font(.system(size: 30 * scale))
+                .foregroundStyle(filtersActive ? Color.accentColor : .primary)
+        }
+        .buttonStyle(BounceButtonStyle())
+        // The Image has no text label so XCUITest can't find the
+        // button by its accessibility label — give it both a label
+        // and an identifier. The label is also useful for
+        // VoiceOver users in production.
+        .accessibilityLabel("filtersheet.title")
+        .accessibilityIdentifier(A11y.TopBar.filtryButton)
+        // The lit state, for VoiceOver ("selected") and the UI tests.
+        .accessibilityAddTraits(filtersActive ? .isSelected : [])
     }
 }
 

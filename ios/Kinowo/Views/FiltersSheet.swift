@@ -44,132 +44,144 @@ struct FiltersSheet: View {
         NavigationStack {
             ScrollViewReader { proxy in
                 Form {
-                // Sortowanie leads the sheet (above Ukryte filmy, matching
-                // Android). Mirrors the web's `#sort-by` dropdown: earliest
-                // showtime (default) or weighted rating.
-                Section("filtersheet.sort_section") {
-                    Picker("filtersheet.sort_picker", selection: $filters.sort) {
-                        ForEach(SortOption.allCases, id: \.self) { option in
-                            Text(option.label(locale: locale)).tag(option)
-                        }
-                    }
-                    .accessibilityIdentifier(A11y.FiltersSheet.sortPicker)
+                    sortSection
+                    hiddenFilmsSection
+
+                    // Kina — the one cinema filter, over `prefs.disabledCinemas`.
+                    // Sits above the name filters, mirroring the web's Filtry order.
+                    // (Web's "Sale" room picker has no iOS equivalent.)
+                    CinemaFilterSectionView(catalog: store.catalog, prefs: prefs)
+
+                    NameFilterSection(title: "filtersheet.country_of_production", allEntries: facets.countries, excluded: $filters.excludedCountries)
+                    NameFilterSection(title: "filtersheet.genre",                allEntries: facets.genres,    excluded: $filters.excludedGenres)
+                    NameFilterSection(title: "filtersheet.director",             allEntries: facets.directors, excluded: $filters.excludedDirectors)
+                    NameFilterSection(title: "filtersheet.cast",                 allEntries: facets.cast,      excluded: $filters.excludedCast)
+
+                    FormatFilterSections(format: $filters.format, prefs: prefs)
+
+                    clearSection
+                    citySection
+                    languageSection
+
+                    // ── Account ──────────────────────────────────────
+                    AccountSection(prefs: prefs)
+                        .id(accountAnchor)
                 }
-
-                // Hidden films get a single row that pushes a child screen —
-                // the inline list would otherwise crowd out every other filter
-                // when the set grows. Row hidden entirely when the set is empty
-                // so the sheet stays uncluttered.
-                if !prefs.hiddenFilms.isEmpty {
-                    Section {
-                        NavigationLink {
-                            HiddenFilmsList(prefs: prefs)
-                        } label: {
-                            HStack {
-                                Text("filtersheet.hidden_films")
-                                Spacer()
-                                Text("\(prefs.hiddenFilms.count)")
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
+                // After a successful sign-in (user goes nil → set), scroll the sheet
+                // down to the freshly-revealed Konto section so the result of logging
+                // in lands in view rather than off the bottom.
+                .onChange(of: authService.user != nil) { _, loggedIn in
+                    if loggedIn {
+                        withAnimation { proxy.scrollTo(accountAnchor, anchor: .bottom) }
                     }
                 }
-
-                // Kina — the one cinema filter, over `prefs.disabledCinemas`.
-                // Sits above the name filters, mirroring the web's Filtry order.
-                // (Web's "Sale" room picker has no iOS equivalent.)
-                CinemaFilterSectionView(catalog: store.catalog, prefs: prefs)
-
-                NameFilterSection(title: "filtersheet.country_of_production", allEntries: facets.countries, excluded: $filters.excludedCountries)
-                NameFilterSection(title: "filtersheet.genre",                allEntries: facets.genres,    excluded: $filters.excludedGenres)
-                NameFilterSection(title: "filtersheet.director",             allEntries: facets.directors, excluded: $filters.excludedDirectors)
-                NameFilterSection(title: "filtersheet.cast",                 allEntries: facets.cast,      excluded: $filters.excludedCast)
-
-                FormatFilterSections(format: $filters.format, prefs: prefs)
-
-                Section {
-                    Button(role: .destructive) {
-                        // Reset everything that lights the Filtry button
-                        // (`ListingFilters.Cleared`), then close the sheet.
-                        let cleared = ListingFilters.Cleared(disabledCinemas: prefs.disabledCinemas,
-                                                             catalog: store.catalog, films: store.films)
-                        filters = cleared.filters
-                        prefs.setDisabledCinemas(cleared.disabledCinemas)
-                        if !prefs.hiddenFilms.isEmpty { prefs.unhideAll() }
-                        dismiss()
-                    } label: {
-                        Text("filtersheet.clear")
-                            .frame(maxWidth: .infinity)
+                .navigationTitle("filtersheet.title")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("filtersheet.done") { dismiss() }
+                            .accessibilityIdentifier(A11y.FiltersSheet.doneButton)
                     }
-                    .accessibilityIdentifier(A11y.FiltersSheet.clearButton)
                 }
+                .accessibilityIdentifier(A11y.FiltersSheet.root)
+                .onAppear {
+                    if currentCityLabel == nil { currentCityLabel = computeCurrentCityLabel() }
+                }
+            }
+        }
+    }
 
-                // ── City ─────────────────────────────────────────
-                // A single entry point back to the first-launch picker
-                // (`CityChoiceView`), replacing the inline Kraj/Miasto pickers:
-                // tapping re-arms the explicit-pick flow (`awaitExplicitCityPick`)
-                // and clears the persisted city (`clearCity`) — the same pair the
-                // country switch used to trigger here — so `CityGate` re-mounts on
-                // the country/city chooser once the sheet closes. The current city
-                // may not exist under a newly chosen country's host, so we never
-                // leave the app pointed at a stale city on a new base URL.
-                Section("filtersheet.city") {
+    /// Sortowanie leads the sheet (above Ukryte filmy, matching Android). Mirrors the
+    /// web's `#sort-by` dropdown: earliest showtime (default) or weighted rating.
+    private var sortSection: some View {
+        Section("filtersheet.sort_section") {
+            Picker("filtersheet.sort_picker", selection: $filters.sort) {
+                ForEach(SortOption.allCases, id: \.self) { option in
+                    Text(option.label(locale: locale)).tag(option)
+                }
+            }
+            .accessibilityIdentifier(A11y.FiltersSheet.sortPicker)
+        }
+    }
+
+    /// Hidden films get a single row that pushes a child screen — the inline list would
+    /// otherwise crowd out every other filter when the set grows. Row hidden entirely when
+    /// the set is empty so the sheet stays uncluttered.
+    @ViewBuilder
+    private var hiddenFilmsSection: some View {
+        if !prefs.hiddenFilms.isEmpty {
+            Section {
+                NavigationLink {
+                    HiddenFilmsList(prefs: prefs)
+                } label: {
                     HStack {
-                        Text(currentCityLabel ?? computeCurrentCityLabel())
+                        Text("filtersheet.hidden_films")
                         Spacer()
+                        Text("\(prefs.hiddenFilms.count)")
+                            .foregroundStyle(.secondary)
                     }
-                    .foregroundStyle(.secondary)
-                    Button {
-                        prefs.awaitExplicitCityPick()
-                        prefs.clearCity()
-                        dismiss()
-                    } label: {
-                        Text("citygate.choose_other")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .accessibilityIdentifier(A11y.FiltersSheet.pickAnotherCityButton)
                 }
+            }
+        }
+    }
 
-                // ── Language ─────────────────────────────────────
-                // The UI language, fully independent of country (see
-                // `LanguageSelection`) — switching country never changes it.
-                Section("filtersheet.language") {
-                    Picker("filtersheet.language", selection: Binding(
-                        get: { prefs.selectedLanguage },
-                        set: { prefs.setLanguage($0) }
-                    )) {
-                        ForEach(LanguageSelection.supported, id: \.self) { code in
-                            Text(LanguageDisplayName.native(code)).tag(code)
-                        }
-                    }
-                    .accessibilityIdentifier(A11y.FiltersSheet.languagePicker)
-                }
+    private var clearSection: some View {
+        Section {
+            Button(role: .destructive) {
+                // Reset everything that lights the Filtry button
+                // (`ListingFilters.Cleared`), then close the sheet.
+                let cleared = ListingFilters.Cleared(disabledCinemas: prefs.disabledCinemas,
+                                                     catalog: store.catalog, films: store.films)
+                filters = cleared.filters
+                prefs.setDisabledCinemas(cleared.disabledCinemas)
+                if !prefs.hiddenFilms.isEmpty { prefs.unhideAll() }
+                dismiss()
+            } label: {
+                Text("filtersheet.clear")
+                    .frame(maxWidth: .infinity)
+            }
+            .accessibilityIdentifier(A11y.FiltersSheet.clearButton)
+        }
+    }
 
-                // ── Account ──────────────────────────────────────
-                AccountSection(prefs: prefs)
-                    .id(accountAnchor)
+    /// A single entry point back to the first-launch picker (`CityChoiceView`), replacing the
+    /// inline Kraj/Miasto pickers: tapping re-arms the explicit-pick flow
+    /// (`awaitExplicitCityPick`) and clears the persisted city (`clearCity`), so `CityGate`
+    /// re-mounts on the country/city chooser once the sheet closes. The current city may not
+    /// exist under a newly chosen country's host, so we never leave the app pointed at a
+    /// stale city on a new base URL.
+    private var citySection: some View {
+        Section("filtersheet.city") {
+            HStack {
+                Text(currentCityLabel ?? computeCurrentCityLabel())
+                Spacer()
             }
-            // After a successful sign-in (user goes nil → set), scroll the sheet
-            // down to the freshly-revealed Konto section so the result of logging
-            // in lands in view rather than off the bottom.
-            .onChange(of: authService.user != nil) { _, loggedIn in
-                if loggedIn {
-                    withAnimation { proxy.scrollTo(accountAnchor, anchor: .bottom) }
+            .foregroundStyle(.secondary)
+            Button {
+                prefs.awaitExplicitCityPick()
+                prefs.clearCity()
+                dismiss()
+            } label: {
+                Text("citygate.choose_other")
+                    .frame(maxWidth: .infinity)
+            }
+            .accessibilityIdentifier(A11y.FiltersSheet.pickAnotherCityButton)
+        }
+    }
+
+    /// The UI language, fully independent of country (see `LanguageSelection`) — switching
+    /// country never changes it.
+    private var languageSection: some View {
+        Section("filtersheet.language") {
+            Picker("filtersheet.language", selection: Binding(
+                get: { prefs.selectedLanguage },
+                set: { prefs.setLanguage($0) }
+            )) {
+                ForEach(LanguageSelection.supported, id: \.self) { code in
+                    Text(LanguageDisplayName.native(code)).tag(code)
                 }
             }
-            .navigationTitle("filtersheet.title")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("filtersheet.done") { dismiss() }
-                        .accessibilityIdentifier(A11y.FiltersSheet.doneButton)
-                }
-            }
-            .accessibilityIdentifier(A11y.FiltersSheet.root)
-            .onAppear {
-                if currentCityLabel == nil { currentCityLabel = computeCurrentCityLabel() }
-            }
-            }
+            .accessibilityIdentifier(A11y.FiltersSheet.languagePicker)
         }
     }
 }
@@ -217,6 +229,10 @@ struct FormatFilterSections: View {
             }
         }
 
+        fromHourSection
+    }
+
+    private var fromHourSection: some View {
         Section(header: Text("filtersheet.from_hour")
             .accessibilityIdentifier(A11y.FiltersSheet.fromHourSection)) {
             Picker("filtersheet.hour", selection: $format.fromHour) {

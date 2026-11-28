@@ -39,39 +39,7 @@ struct ShowingsView: View {
         let days = shouldTruncate ? visibleDays : allDays
 
         VStack(alignment: .leading, spacing: spacing.showingsBlock) {
-            ForEach(days, id: \.date) { day in
-                let outside = outsideDays?.contains(day.date) ?? false
-                // Each day is its own block so the gap below the day label
-                // (`dayToCinema`) is independent of `showingsBlock`, which spaces
-                // the cinema rows within a day and the day blocks from one
-                // another. Mirrors Android's `Showings` layout.
-                VStack(alignment: .leading, spacing: 0) {
-                    Text(DateLabel.format(isoDate: day.date, locale: locale).uppercased())
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundColor(Color.white.opacity(outside ? 1 : 0.85))
-                        .tracking(0.5)
-                        .padding(.top, spacing.dayLabelTop)
-                    VStack(alignment: .leading, spacing: spacing.showingsBlock) {
-                        ForEach(day.cinemas, id: \.cinema) { cinema in
-                            VStack(alignment: .leading, spacing: spacing.cinemaToPills) {
-                                if showCinemaHeaders {
-                                    cinemaLabel(cinema)
-                                }
-                                FlowLayout(spacing: pillStyle.interPillGap, lineSpacing: spacing.pillRowSpacing) {
-                                    ForEach(cinema.showtimes) { st in
-                                        ShowtimeBadge(
-                                            showtime: st,
-                                            outside: outside,
-                                            displayFormat: FormatTokenFilter.filter(st.format, removing: strippedTokens)
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    .padding(.top, spacing.dayToCinema)
-                }
-            }
+            ForEach(days, id: \.date) { dayBlock($0, strippedTokens: strippedTokens) }
             if shouldTruncate {
                 moreLabel(hiddenShowtimes: hiddenShowtimes)
             }
@@ -81,6 +49,44 @@ struct ShowingsView: View {
         // room tooltip reads its centre in this space to clamp itself inside the
         // card rather than spilling past the edge — see `ShowtimeBadge`.
         .coordinateSpace(name: ShowtimeBadge.cardCoordinateSpace)
+    }
+
+    /// Each day is its own block so the gap below the day label
+    /// (`dayToCinema`) is independent of `showingsBlock`, which spaces
+    /// the cinema rows within a day and the day blocks from one
+    /// another. Mirrors Android's `Showings` layout.
+    private func dayBlock(_ day: DayShowings, strippedTokens: Set<String>) -> some View {
+        let outside = outsideDays?.contains(day.date) ?? false
+        return VStack(alignment: .leading, spacing: 0) {
+            Text(DateLabel.format(isoDate: day.date, locale: locale).uppercased())
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundColor(Color.white.opacity(outside ? 1 : 0.85))
+                .tracking(0.5)
+                .padding(.top, spacing.dayLabelTop)
+            VStack(alignment: .leading, spacing: spacing.showingsBlock) {
+                ForEach(day.cinemas, id: \.cinema) {
+                    cinemaBlock($0, outside: outside, strippedTokens: strippedTokens)
+                }
+            }
+            .padding(.top, spacing.dayToCinema)
+        }
+    }
+
+    private func cinemaBlock(_ cinema: CinemaShowings, outside: Bool, strippedTokens: Set<String>) -> some View {
+        VStack(alignment: .leading, spacing: spacing.cinemaToPills) {
+            if showCinemaHeaders {
+                cinemaLabel(cinema)
+            }
+            FlowLayout(spacing: pillStyle.interPillGap, lineSpacing: spacing.pillRowSpacing) {
+                ForEach(cinema.showtimes) { st in
+                    ShowtimeBadge(
+                        showtime: st,
+                        outside: outside,
+                        displayFormat: FormatTokenFilter.filter(st.format, removing: strippedTokens)
+                    )
+                }
+            }
+        }
     }
 
     private func truncated(_ allDays: [DayShowings], commonTokens: Set<String>) -> (visible: [DayShowings], hidden: Int) {
@@ -271,31 +277,8 @@ private struct ShowtimeBadge: View {
         blue: ShowtimePillMetrics.outsideTextRGB.blue)
 
     var body: some View {
-        let trimmedFormat = displayFormat.trimmingCharacters(in: .whitespacesAndNewlines)
         let room = showtime.displayRoom
-
-        let pill = HStack(spacing: style.internalGap) {
-            Text(showtime.time)
-                .font(.system(size: style.timeFontSize, weight: style.timeWeight))
-                .foregroundColor(outside ? Self.outsideTimeColor : Self.timeColor)
-            if !trimmedFormat.isEmpty {
-                Text(trimmedFormat)
-                    .font(.system(size: style.formatFontSize, weight: style.formatWeight))
-                    .foregroundColor((outside ? Self.outsideTimeColor : Self.timeColor).opacity(ShowtimePillMetrics.formatAlpha))
-            }
-        }
-        .padding(.horizontal, style.horizontalInset)
-        .padding(.vertical, style.verticalInset)
-        .background(holding ? Self.pressedFill : outside ? Self.outsideFill : Self.fill, in: RoundedRectangle(cornerRadius: 5))
-        .onGeometryChange(for: CGFloat.self, of: {
-            $0.frame(in: .named(Self.cardCoordinateSpace)).midX
-        }) { pillMidX = $0 }
-        .overlay(alignment: Alignment(horizontal: .center, vertical: .roomTooltipBase)) {
-            if holding, let room {
-                roomTooltip(room)
-            }
-        }
-        .animation(.easeOut(duration: 0.1), value: holding)
+        let pill = pillView(room: room)
 
         // A quick tap opens the booking link (when present); pressing and
         // holding reveals the room name for as long as the finger stays
@@ -319,6 +302,33 @@ private struct ShowtimeBadge: View {
         } else {
             pill
         }
+    }
+
+    private func pillView(room: String?) -> some View {
+        let trimmedFormat = displayFormat.trimmingCharacters(in: .whitespacesAndNewlines)
+        let textColor = outside ? Self.outsideTimeColor : Self.timeColor
+        return HStack(spacing: style.internalGap) {
+            Text(showtime.time)
+                .font(.system(size: style.timeFontSize, weight: style.timeWeight))
+                .foregroundColor(textColor)
+            if !trimmedFormat.isEmpty {
+                Text(trimmedFormat)
+                    .font(.system(size: style.formatFontSize, weight: style.formatWeight))
+                    .foregroundColor(textColor.opacity(ShowtimePillMetrics.formatAlpha))
+            }
+        }
+        .padding(.horizontal, style.horizontalInset)
+        .padding(.vertical, style.verticalInset)
+        .background(holding ? Self.pressedFill : outside ? Self.outsideFill : Self.fill, in: RoundedRectangle(cornerRadius: 5))
+        .onGeometryChange(for: CGFloat.self, of: {
+            $0.frame(in: .named(Self.cardCoordinateSpace)).midX
+        }) { pillMidX = $0 }
+        .overlay(alignment: Alignment(horizontal: .center, vertical: .roomTooltipBase)) {
+            if holding, let room {
+                roomTooltip(room)
+            }
+        }
+        .animation(.easeOut(duration: 0.1), value: holding)
     }
 
     // Sits 15 pt above the pill (the finger is parked right on it during the

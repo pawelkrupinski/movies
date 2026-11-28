@@ -99,18 +99,17 @@ final class AuthService: NSObject {
     // MARK: - Server communication
 
     private func exchangeCode(_ code: String, verifier: String) async throws {
-        let request = AuthRequests.exchange(base: kinowoBaseURL, body: try NativeSignIn.exchangeBody(code: code, verifier: verifier))
-        let (data, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
-            throw URLError(.userAuthenticationRequired)
-        }
-        self.user = try JSONDecoder().decode(UserProfile.self, from: data)
+        try await adoptUser(from: AuthRequests.exchange(base: kinowoBaseURL, body: try NativeSignIn.exchangeBody(code: code, verifier: verifier)))
     }
 
     private func sendToken(provider: String, token: String, fullName: String? = nil) async throws {
         var body: [String: String] = ["provider": provider, "token": token]
         if let name = fullName { body["fullName"] = name }
-        let request = AuthRequests.token(base: kinowoBaseURL, body: try JSONEncoder().encode(body))
+        try await adoptUser(from: AuthRequests.token(base: kinowoBaseURL, body: try JSONEncoder().encode(body)))
+    }
+
+    /// Sends a sign-in request and adopts the profile the server answers with.
+    private func adoptUser(from request: URLRequest) async throws {
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
             throw URLError(.userAuthenticationRequired)
@@ -133,6 +132,10 @@ final class AuthService: NSObject {
 
     func signOut() async {
         _ = try? await session.data(for: AuthRequests.logout(base: kinowoBaseURL))
+        forgetSession()
+    }
+
+    private func forgetSession() {
         user = nil
         if let cookies = HTTPCookieStorage.shared.cookies(for: kinowoBaseURL) {
             cookies.forEach { HTTPCookieStorage.shared.deleteCookie($0) }
@@ -143,10 +146,7 @@ final class AuthService: NSObject {
     /// `AccountDeletion.delete`), keeps the user signed in and returns false.
     func deleteAccount() async -> Bool {
         guard await AccountDeletion.delete(session: session, base: kinowoBaseURL) else { return false }
-        user = nil
-        if let cookies = HTTPCookieStorage.shared.cookies(for: kinowoBaseURL) {
-            cookies.forEach { HTTPCookieStorage.shared.deleteCookie($0) }
-        }
+        forgetSession()
         return true
     }
 }

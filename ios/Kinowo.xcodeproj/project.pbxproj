@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		DD00000000000000000002 /* KinowoApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000002 /* KinowoApp.swift */; };
 		DD00000000000000000003 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000003 /* ContentView.swift */; };
+		DDE64C2451EB16A866BA6D9F /* ContentViewEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCE64C2451EB16A866BA6D9F /* ContentViewEnvironment.swift */; };
 		DD00000000000000000220 /* DisplayInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000220 /* DisplayInfo.swift */; };
 		DD00000000000000000004 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000004 /* Assets.xcassets */; };
 		DD00000000000000000E01 /* Country.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000E01 /* Country.swift */; };
@@ -67,6 +68,7 @@
 		DD00000000000000000262 /* AreaPickerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000262 /* AreaPickerSheet.swift */; };
 		DD00000000000000000211 /* FilmDetailStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000211 /* FilmDetailStyle.swift */; };
 		DD00000000000000000096 /* ShowtimeTuningScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000096 /* ShowtimeTuningScreen.swift */; };
+		DD48E5806351C6B4BC467E4D /* TuningSampleData.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC48E5806351C6B4BC467E4D /* TuningSampleData.swift */; };
 		DD00000000000000000095 /* RatingPillStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000095 /* RatingPillStyle.swift */; };
 		DD00000000000000000040 /* FilmDetails.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000040 /* FilmDetails.swift */; };
 		DD00000000000000000041 /* CinemaLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000041 /* CinemaLink.swift */; };
@@ -79,6 +81,8 @@
 		DD0000000000000000A5D3 /* AccountDeletion.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000A5D3 /* AccountDeletion.swift */; };
 		DD00000000000000000E06 /* CatalogStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000E06 /* CatalogStore.swift */; };
 		DD00000000000000000018 /* FilmDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000018 /* FilmDetailView.swift */; };
+		DD79DEBCFCBC8D9E541B381E /* TrailerEmbedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC79DEBCFCBC8D9E541B381E /* TrailerEmbedView.swift */; };
+		DD4A921B0D82C63E96A03663 /* FullScreenPosterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC4A921B0D82C63E96A03663 /* FullScreenPosterView.swift */; };
 		DD00000000000000000019 /* FlowLayoutMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000019 /* FlowLayoutMath.swift */; };
 		DD0000000000000000001B /* AccessibilityIdentifiers.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000001B /* AccessibilityIdentifiers.swift */; };
 		DD0000000000000000001C /* RepertoireLaunchUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000001C /* RepertoireLaunchUITests.swift */; };
@@ -132,6 +136,8 @@
 		DD00000000000000000304 /* HiddenFilmsFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000304 /* HiddenFilmsFilter.swift */; };
 		DD00000000000000000303 /* CitySwitchSuppressor.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000303 /* CitySwitchSuppressor.swift */; };
 		DD00000000000000000301 /* CityGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000301 /* CityGate.swift */; };
+		DD3EA00143123D1EF10421CC /* CountryPickerRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC3EA00143123D1EF10421CC /* CountryPickerRow.swift */; };
+		DD0A12128BF5C7F1BFDB6474 /* CityChoiceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0A12128BF5C7F1BFDB6474 /* CityChoiceView.swift */; };
 		DD0000000000000000A5C3 /* UpdateRequiredView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000A5C3 /* UpdateRequiredView.swift */; };
 		DD00000000000000000302 /* LocationCityResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000302 /* LocationCityResolver.swift */; };
 /* End PBXBuildFile section */
@@ -150,6 +156,7 @@
 		CC00000000000000000001 /* Kinowo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Kinowo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		CC00000000000000000002 /* KinowoApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KinowoApp.swift; sourceTree = "<group>"; };
 		CC00000000000000000003 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		CCE64C2451EB16A866BA6D9F /* ContentViewEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentViewEnvironment.swift; sourceTree = "<group>"; };
 		CC00000000000000000220 /* DisplayInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplayInfo.swift; sourceTree = "<group>"; };
 		CC00000000000000000004 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		CC00000000000000000E01 /* Country.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Country.swift; sourceTree = "<group>"; };
@@ -208,6 +215,7 @@
 		CC00000000000000000262 /* AreaPickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AreaPickerSheet.swift; sourceTree = "<group>"; };
 		CC00000000000000000211 /* FilmDetailStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilmDetailStyle.swift; sourceTree = "<group>"; };
 		CC00000000000000000096 /* ShowtimeTuningScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShowtimeTuningScreen.swift; sourceTree = "<group>"; };
+		CC48E5806351C6B4BC467E4D /* TuningSampleData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TuningSampleData.swift; sourceTree = "<group>"; };
 		CC00000000000000000095 /* RatingPillStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RatingPillStyle.swift; sourceTree = "<group>"; };
 		CC00000000000000000040 /* FilmDetails.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilmDetails.swift; sourceTree = "<group>"; };
 		CC00000000000000000041 /* CinemaLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CinemaLink.swift; sourceTree = "<group>"; };
@@ -220,6 +228,8 @@
 		CC0000000000000000A5D3 /* AccountDeletion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountDeletion.swift; sourceTree = "<group>"; };
 		CC00000000000000000E06 /* CatalogStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogStore.swift; sourceTree = "<group>"; };
 		CC00000000000000000018 /* FilmDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilmDetailView.swift; sourceTree = "<group>"; };
+		CC79DEBCFCBC8D9E541B381E /* TrailerEmbedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailerEmbedView.swift; sourceTree = "<group>"; };
+		CC4A921B0D82C63E96A03663 /* FullScreenPosterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FullScreenPosterView.swift; sourceTree = "<group>"; };
 		CC00000000000000000019 /* FlowLayoutMath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowLayoutMath.swift; sourceTree = "<group>"; };
 		CC0000000000000000001A /* KinowoUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = KinowoUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		CC0000000000000000001B /* AccessibilityIdentifiers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityIdentifiers.swift; sourceTree = "<group>"; };
@@ -273,6 +283,8 @@
 		CC00000000000000000304 /* HiddenFilmsFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HiddenFilmsFilter.swift; sourceTree = "<group>"; };
 		CC00000000000000000303 /* CitySwitchSuppressor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CitySwitchSuppressor.swift; sourceTree = "<group>"; };
 		CC00000000000000000301 /* CityGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CityGate.swift; sourceTree = "<group>"; };
+		CC3EA00143123D1EF10421CC /* CountryPickerRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CountryPickerRow.swift; sourceTree = "<group>"; };
+		CC0A12128BF5C7F1BFDB6474 /* CityChoiceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CityChoiceView.swift; sourceTree = "<group>"; };
 		CC0000000000000000A5C3 /* UpdateRequiredView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateRequiredView.swift; sourceTree = "<group>"; };
 		CC00000000000000000302 /* LocationCityResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationCityResolver.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -309,6 +321,7 @@
 			children = (
 				CC00000000000000000002 /* KinowoApp.swift */,
 				CC00000000000000000003 /* ContentView.swift */,
+				CCE64C2451EB16A866BA6D9F /* ContentViewEnvironment.swift */,
 				CC00000000000000000402 /* DeepLinkCoordinator.swift */,
 				CC00000000000000000220 /* DisplayInfo.swift */,
 				CC0000000000000000001B /* AccessibilityIdentifiers.swift */,
@@ -420,11 +433,15 @@
 			isa = PBXGroup;
 			children = (
 				CC00000000000000000301 /* CityGate.swift */,
+				CC3EA00143123D1EF10421CC /* CountryPickerRow.swift */,
+				CC0A12128BF5C7F1BFDB6474 /* CityChoiceView.swift */,
 				CC0000000000000000A5C3 /* UpdateRequiredView.swift */,
 				CC00000000000000000260 /* CinemaFilterSectionView.swift */,
 				CC0000000000000000000B /* FilmGridView.swift */,
 				CC0000000000000000000C /* FilmCardView.swift */,
 				CC00000000000000000018 /* FilmDetailView.swift */,
+				CC79DEBCFCBC8D9E541B381E /* TrailerEmbedView.swift */,
+				CC4A921B0D82C63E96A03663 /* FullScreenPosterView.swift */,
 				CC0000000000000000000D /* ShowingsView.swift */,
 				CC0000000000000000000E /* RatingBadgesView.swift */,
 				CC0000000000000000B801 /* LocalizedCaptions.swift */,
@@ -448,6 +465,7 @@
 				CC00000000000000000262 /* AreaPickerSheet.swift */,
 				CC00000000000000000211 /* FilmDetailStyle.swift */,
 				CC00000000000000000096 /* ShowtimeTuningScreen.swift */,
+				CC48E5806351C6B4BC467E4D /* TuningSampleData.swift */,
 				CC00000000000000000095 /* RatingPillStyle.swift */,
 				CC00000000000000000019 /* FlowLayoutMath.swift */,
 				CC00000000000000000036 /* FormatTokenFilter.swift */,
@@ -609,6 +627,7 @@
 			files = (
 				DD00000000000000000002 /* KinowoApp.swift in Sources */,
 				DD00000000000000000003 /* ContentView.swift in Sources */,
+				DDE64C2451EB16A866BA6D9F /* ContentViewEnvironment.swift in Sources */,
 				DD00000000000000000220 /* DisplayInfo.swift in Sources */,
 				DD00000000000000000005 /* Film.swift in Sources */,
 				DD00000000000000000500 /* DateLabel.swift in Sources */,
@@ -657,6 +676,7 @@
 				DD00000000000000000262 /* AreaPickerSheet.swift in Sources */,
 				DD00000000000000000211 /* FilmDetailStyle.swift in Sources */,
 				DD00000000000000000096 /* ShowtimeTuningScreen.swift in Sources */,
+				DD48E5806351C6B4BC467E4D /* TuningSampleData.swift in Sources */,
 				DD00000000000000000095 /* RatingPillStyle.swift in Sources */,
 				DD00000000000000000040 /* FilmDetails.swift in Sources */,
 				DD00000000000000000041 /* CinemaLink.swift in Sources */,
@@ -669,6 +689,8 @@
 				DD0000000000000000A5D3 /* AccountDeletion.swift in Sources */,
 				DD00000000000000000E06 /* CatalogStore.swift in Sources */,
 				DD00000000000000000018 /* FilmDetailView.swift in Sources */,
+				DD79DEBCFCBC8D9E541B381E /* TrailerEmbedView.swift in Sources */,
+				DD4A921B0D82C63E96A03663 /* FullScreenPosterView.swift in Sources */,
 				DD00000000000000000019 /* FlowLayoutMath.swift in Sources */,
 				DD0000000000000000001F /* AccessibilityIdentifiers.swift in Sources */,
 				DD00000000000000000022 /* RetryBackoff.swift in Sources */,
@@ -690,6 +712,8 @@
 				DD00000000000000000304 /* HiddenFilmsFilter.swift in Sources */,
 				DD00000000000000000303 /* CitySwitchSuppressor.swift in Sources */,
 				DD00000000000000000301 /* CityGate.swift in Sources */,
+				DD3EA00143123D1EF10421CC /* CountryPickerRow.swift in Sources */,
+				DD0A12128BF5C7F1BFDB6474 /* CityChoiceView.swift in Sources */,
 				DD0000000000000000A5C3 /* UpdateRequiredView.swift in Sources */,
 				DD00000000000000000302 /* LocationCityResolver.swift in Sources */,
 			);

@@ -301,19 +301,8 @@ extension Sequence where Element == Film {
     func groupedByCinema() -> [CinemaSection] {
         var perCinema: [String: [Film]] = [:]
         for film in self {
-            var seen = Set<String>()
-            for day in film.showings {
-                for cg in day.cinemas {
-                    seen.insert(cg.cinema)
-                }
-            }
-            for cinema in seen {
-                let days: [DayShowings] = film.showings.compactMap { day in
-                    let kept = day.cinemas.filter { $0.cinema == cinema }
-                    guard !kept.isEmpty else { return nil }
-                    return DayShowings(date: day.date, label: day.label, cinemas: kept)
-                }
-                if let narrowed = film.narrowed(to: days) { perCinema[cinema, default: []].append(narrowed) }
+            for (cinema, narrowed) in film.narrowedPerCinema() {
+                perCinema[cinema, default: []].append(narrowed)
             }
         }
         return perCinema.keys.sorted { CinemaSection.pillName(for: $0) < CinemaSection.pillName(for: $1) }.map { name in
@@ -395,5 +384,19 @@ enum ShowtimeClock {
         comps.year = d[0]; comps.month = d[1]; comps.day = d[2]
         comps.hour = t[0]; comps.minute = t[1]
         return cal.date(from: comps)
+    }
+}
+
+private extension Film {
+    /// This film once per cinema it plays at, narrowed to that cinema's showings.
+    func narrowedPerCinema() -> [(cinema: String, film: Film)] {
+        let cinemas = Set(showings.flatMap { $0.cinemas.map(\.cinema) })
+        return cinemas.compactMap { cinema in
+            let days: [DayShowings] = showings.compactMap { day in
+                let kept = day.cinemas.filter { $0.cinema == cinema }
+                return kept.isEmpty ? nil : DayShowings(date: day.date, label: day.label, cinemas: kept)
+            }
+            return narrowed(to: days).map { (cinema, $0) }
+        }
     }
 }

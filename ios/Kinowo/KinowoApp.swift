@@ -86,60 +86,70 @@ struct KinowoApp: App {
 
     var body: some Scene {
         WindowGroup {
-            gatedRoot
-                .environment(store)
-                .environment(details)
-                .environment(catalog)
-                .environment(prefs)
-                .environment(authService)
-                .environment(\.stateSync, sync)
-                .environment(deepLink)
-                .environmentObject(locationResolver)
-                .environment(\.posterStore, posters)
-                // Follow the selected (country-independent) language for
-                // in-session SwiftUI `Text(LocalizedStringKey)` resolution
-                // (keyed to the choice so a switch re-localizes the view tree).
-                //
-                // Language ONLY, deliberately NOT country too: `/api/catalog`
-                // (`CatalogController.catalog()`, web) is served identically by
-                // every deployment — no per-country branching at all — so a
-                // country switch has nothing catalog-side that needs a rebuild
-                // to pick up. Repertoire data is re-pointed directly instead,
-                // by whoever actually changes country, through `switchCountry`
-                // (`handleDeepLink`, `CityChoiceView`), and
-                // `CityGate`'s own `ContentView().task(id: slug)` re-fires off
-                // the CITY slug the moment one is chosen for the new country —
-                // neither needs this tree torn down. Keying on country too
-                // (tried, reverted) instead tore down `CityGate`'s own in-progress
-                // country→city picker flow (`CityChoiceView`) the instant a
-                // country was tapped, since the remount reset the whole subtree's
-                // local `@State` before the user could pick a city for it.
-                .environment(\.locale, Locale(identifier: prefs.selectedLanguage))
-                .id(prefs.selectedLanguage)
-                .preferredColorScheme(.dark)
-                .tint(Color(red: 0.42, green: 0.67, blue: 0.87))
-                .task { await authService.checkSession() }
-                // Minimum-supported-version gate, asked of the same deployment
-                // as `/api/catalog`. Fails open: only a definite "below the
-                // minimum" answer swaps the app for `UpdateRequiredView`.
-                .task { await clientSupport.check(baseURL: kinowoBaseURL) }
-                .task { await resolveStorefrontLanguage() }
-                // A kinowo.net Universal Link (or kinowo:// link) opened the
-                // app. Switch the city eagerly so the CityGate flips straight to
-                // it on a cold launch; ContentView applies the filters + film.
-                .onOpenURL { handleDeepLink($0) }
-                #if DEBUG
-                // UI tests can't deliver a real Universal Link, so they inject
-                // one through the same path via a launch-env var (mirrors the
-                // KINOWO_UITEST_FIXTURE / KINOWO_FORCE_DETECTED_CITY hooks).
-                .task {
-                    if let raw = ProcessInfo.processInfo.environment["KINOWO_UITEST_DEEPLINK"],
-                       let url = URL(string: raw) {
-                        handleDeepLink(url)
-                    }
-                }
-                #endif
+            withLaunchTasks(configuredRoot)
         }
+    }
+
+    /// The root with every store in the environment, then the language and theme.
+    private var configuredRoot: some View {
+        gatedRoot
+            .environment(store)
+            .environment(details)
+            .environment(catalog)
+            .environment(prefs)
+            .environment(authService)
+            .environment(\.stateSync, sync)
+            .environment(deepLink)
+            .environmentObject(locationResolver)
+            .environment(\.posterStore, posters)
+            // Follow the selected (country-independent) language for
+            // in-session SwiftUI `Text(LocalizedStringKey)` resolution
+            // (keyed to the choice so a switch re-localizes the view tree).
+            //
+            // Language ONLY, deliberately NOT country too: `/api/catalog`
+            // (`CatalogController.catalog()`, web) is served identically by
+            // every deployment — no per-country branching at all — so a
+            // country switch has nothing catalog-side that needs a rebuild
+            // to pick up. Repertoire data is re-pointed directly instead,
+            // by whoever actually changes country, through `switchCountry`
+            // (`handleDeepLink`, `CityChoiceView`), and
+            // `CityGate`'s own `ContentView().task(id: slug)` re-fires off
+            // the CITY slug the moment one is chosen for the new country —
+            // neither needs this tree torn down. Keying on country too
+            // (tried, reverted) instead tore down `CityGate`'s own in-progress
+            // country→city picker flow (`CityChoiceView`) the instant a
+            // country was tapped, since the remount reset the whole subtree's
+            // local `@State` before the user could pick a city for it.
+            .environment(\.locale, Locale(identifier: prefs.selectedLanguage))
+            .id(prefs.selectedLanguage)
+            .preferredColorScheme(.dark)
+            .tint(Color(red: 0.42, green: 0.67, blue: 0.87))
+    }
+
+    /// The launch-time tasks and the deep-link entry points.
+    private func withLaunchTasks(_ view: some View) -> some View {
+        view
+            .task { await authService.checkSession() }
+            // Minimum-supported-version gate, asked of the same deployment
+            // as `/api/catalog`. Fails open: only a definite "below the
+            // minimum" answer swaps the app for `UpdateRequiredView`.
+            .task { await clientSupport.check(baseURL: kinowoBaseURL) }
+            .task { await resolveStorefrontLanguage() }
+            // A kinowo.net Universal Link (or kinowo:// link) opened the
+            // app. Switch the city eagerly so the CityGate flips straight to
+            // it on a cold launch; ContentView applies the filters + film.
+            .onOpenURL { handleDeepLink($0) }
+            #if DEBUG
+            // UI tests can't deliver a real Universal Link, so they inject
+            // one through the same path via a launch-env var (mirrors the
+            // KINOWO_UITEST_FIXTURE / KINOWO_FORCE_DETECTED_CITY hooks).
+            .task {
+                if let raw = ProcessInfo.processInfo.environment["KINOWO_UITEST_DEEPLINK"],
+                   let url = URL(string: raw) {
+                    handleDeepLink(url)
+                }
+            }
+            #endif
     }
 
     /// Route an inbound deep link: switch the city eagerly (so a cold launch

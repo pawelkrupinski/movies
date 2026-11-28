@@ -48,25 +48,31 @@ struct FilmDetailView: View {
         // RotationColumnsUITests.testFilmDetailStaysClearOfDynamicIslandInLandscape.
         .ignoresSafeArea(edges: .bottom)
         .background(Color(red: 0.067, green: 0.067, blue: 0.067).ignoresSafeArea())
-        .fullScreenCover(isPresented: $showFullScreenPoster) {
-            if let primary = film.posterURL {
-                FullScreenPosterView(
-                    primary: primary,
-                    fallbacks: film.fallbackPosterURLs,
-                    onClose: { showFullScreenPoster = false }
-                )
-            }
-        }
+        .fullScreenCover(isPresented: $showFullScreenPoster) { fullScreenPoster }
         .navigationTitle(film.title)
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            if let citySlug = prefs.selectedCity {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    // Shares the canonical `/<city>/film?title=…` link — same URL
-                    // a user would copy from the website's address bar.
-                    ShareLink(item: FilmShareLink.url(origin: prefs.selectedCountry.baseURL.absoluteString, for: film, citySlug: citySlug), subject: Text(film.title)) {
-                        Image(systemName: "square.and.arrow.up")
-                    }
+        .toolbar { shareItem }
+    }
+
+    @ViewBuilder
+    private var fullScreenPoster: some View {
+        if let primary = film.posterURL {
+            FullScreenPosterView(
+                primary: primary,
+                fallbacks: film.fallbackPosterURLs,
+                onClose: { showFullScreenPoster = false }
+            )
+        }
+    }
+
+    @ToolbarContentBuilder
+    private var shareItem: some ToolbarContent {
+        if let citySlug = prefs.selectedCity {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                // Shares the canonical `/<city>/film?title=…` link — same URL
+                // a user would copy from the website's address bar.
+                ShareLink(item: FilmShareLink.url(origin: prefs.selectedCountry.baseURL.absoluteString, for: film, citySlug: citySlug), subject: Text(film.title)) {
+                    Image(systemName: "square.and.arrow.up")
                 }
             }
         }
@@ -98,37 +104,41 @@ struct FilmDetailView: View {
             .buttonStyle(.plain)
             .accessibilityIdentifier(A11y.FilmDetail.poster)
             .simultaneousGesture(LongPressGesture().onEnded { _ in openFullScreenPoster() })
-            VStack(alignment: .leading, spacing: style.headerColumnSpacing) {
-                Text(film.title)
-                    .font(.system(size: style.titleFontSize, weight: style.titleWeight))
-                    .foregroundColor(.white)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .accessibilityIdentifier(A11y.Tuning.detailTitle)
-                // Original (production-language) title, when the backend
-                // reports one distinct from the Polish cinema title.
-                if let original = filmDetails?.originalTitle, !original.isEmpty {
-                    Text(original)
-                        .font(.system(size: style.originalTitleFontSize))
-                        .italic()
-                        .foregroundColor(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                // Runtime / year / genre pills — the `/film` title block
-                // shows every genre (no cap, unlike the listing card).
-                MetaPillsView(
-                    runtimeMinutes: film.runtimeMinutes,
-                    releaseYear: film.releaseYear,
-                    genres: film.genres,
-                    ageRating: film.ageRating
-                )
-                if !film.ratings.isEmpty {
-                    RatingBadgesView(ratings: film.ratings)
-                }
-                cinemaLinks
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            titleColumn
         }
         .padding(.top, 8)
+    }
+
+    private var titleColumn: some View {
+        VStack(alignment: .leading, spacing: style.headerColumnSpacing) {
+            Text(film.title)
+                .font(.system(size: style.titleFontSize, weight: style.titleWeight))
+                .foregroundColor(.white)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier(A11y.Tuning.detailTitle)
+            // Original (production-language) title, when the backend
+            // reports one distinct from the Polish cinema title.
+            if let original = filmDetails?.originalTitle, !original.isEmpty {
+                Text(original)
+                    .font(.system(size: style.originalTitleFontSize))
+                    .italic()
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            // Runtime / year / genre pills — the `/film` title block
+            // shows every genre (no cap, unlike the listing card).
+            MetaPillsView(
+                runtimeMinutes: film.runtimeMinutes,
+                releaseYear: film.releaseYear,
+                genres: film.genres,
+                ageRating: film.ageRating
+            )
+            if !film.ratings.isEmpty {
+                RatingBadgesView(ratings: film.ratings)
+            }
+            cinemaLinks
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     /// Open the full-screen viewer — no-op when the film has no poster, so the
@@ -305,192 +315,3 @@ struct FilmDetailView: View {
         }
     }
 }
-
-/// The detail header / full-screen poster: `PosterChainImage` sized for a
-/// large frame (contentMode `.fit`) with the panel-coloured placeholder
-/// while the chain is being walked. A free function rather than another
-/// wrapper struct — the walk, the on-disk cache and the backoff retry all
-/// live in `PosterChainImage`, shared with the listing card.
-@ViewBuilder
-@MainActor
-private func detailPoster<NoPoster: View>(
-    primary: URL,
-    fallbacks: [URL],
-    @ViewBuilder noPoster: @escaping () -> NoPoster
-) -> some View {
-    PosterChainImage(
-        primary: primary,
-        fallbacks: fallbacks,
-        contentMode: .fit,
-        loading: {
-            Rectangle()
-                .fill(Color.kinowoPanel)
-                .aspectRatio(PosterMetrics.aspectRatio, contentMode: .fit)
-                .overlay(ProgressView().tint(.gray))
-        },
-        noPoster: noPoster
-    )
-}
-
-/// Full-screen poster viewer presented from `FilmDetailView` on a tap or
-/// long-press of the header poster. Black backdrop, the whole poster shown
-/// (fit), pinch-to-zoom and drag-to-pan up to 4×, dismissed by a tap on the
-/// backdrop or the close button. Reuses `detailPoster` so the
-/// fallback-walking logic lives in one place. Mirrors the Android
-/// `FullScreenPoster`.
-private struct FullScreenPosterView: View {
-    let primary: URL
-    let fallbacks: [URL]
-    let onClose: () -> Void
-
-    @State private var scale: CGFloat = 1
-    @State private var lastScale: CGFloat = 1
-    @State private var offset: CGSize = .zero
-    @State private var lastOffset: CGSize = .zero
-    // Vertical translation of an in-progress swipe-to-dismiss (only while not
-    // zoomed). The poster follows the finger; on release we either commit the
-    // dismissal or spring back to centre.
-    @State private var dismissOffset: CGSize = .zero
-
-    /// A swipe whose vertical travel exceeds this commits the dismissal.
-    /// Mirrors the Android viewer's 80dp threshold (`FullScreenPoster.kt`).
-    private static let dismissThreshold: CGFloat = 100
-
-    /// How long the poster takes to finish sliding off-screen once the swipe is
-    /// committed, before the cover is removed.
-    private static let flyOffDuration: Double = 0.25
-
-    var body: some View {
-        ZStack {
-            // Fade the backdrop out as the poster is flicked away, so the
-            // gesture reads as a dismissal rather than a pan.
-            Color.black.opacity(backdropOpacity).ignoresSafeArea()
-                .accessibilityIdentifier(A11y.FilmDetail.fullScreen)
-
-            detailPoster(primary: primary, fallbacks: fallbacks) { EmptyView() }
-                .scaleEffect(scale)
-                .offset(x: offset.width + dismissOffset.width,
-                        y: offset.height + dismissOffset.height)
-                .gesture(
-                    MagnificationGesture()
-                        .onChanged { scale = min(4, max(1, lastScale * $0)) }
-                        .onEnded { _ in
-                            lastScale = scale
-                            // Snap back to centre once the user pinches all the
-                            // way out — a panned-then-shrunk poster shouldn't
-                            // get stranded off-screen.
-                            if scale <= 1 { withAnimation { offset = .zero; lastOffset = .zero } }
-                        }
-                )
-                .simultaneousGesture(
-                    DragGesture()
-                        .onChanged { value in
-                            if scale > 1 {
-                                // Zoomed in: a drag pans the magnified poster.
-                                offset = CGSize(width: lastOffset.width + value.translation.width,
-                                                height: lastOffset.height + value.translation.height)
-                            } else {
-                                // At rest (1×): a vertical drag flicks the poster
-                                // away to dismiss. Follow the finger vertically only
-                                // so the gesture stays a clean up/down swipe.
-                                dismissOffset = CGSize(width: 0, height: value.translation.height)
-                            }
-                        }
-                        .onEnded { value in
-                            if scale > 1 {
-                                lastOffset = offset
-                            } else if abs(value.translation.height) > Self.dismissThreshold {
-                                flickAway(up: value.translation.height < 0)
-                            } else {
-                                withAnimation(.spring()) { dismissOffset = .zero }
-                            }
-                        }
-                )
-
-            VStack {
-                HStack {
-                    Spacer()
-                    Button(action: onClose) {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(.white)
-                            .padding(10)
-                            .background(Color.black.opacity(0.5), in: Circle())
-                    }
-                    .accessibilityIdentifier(A11y.FilmDetail.closeButton)
-                    .padding(.top, 8)
-                    .padding(.trailing, 16)
-                }
-                Spacer()
-            }
-        }
-        // A tap anywhere on the backdrop dismisses; the close Button and the
-        // zoom/pan gestures take their touches first.
-        .contentShape(Rectangle())
-        .onTapGesture { onClose() }
-    }
-
-    /// Commit the swipe: slide the poster the rest of the way off-screen in the
-    /// direction it was thrown, fading the backdrop with it, then remove the
-    /// cover WITHOUT its default slide-down transition — that transition pulls
-    /// the content back down regardless of swipe direction, which reads as the
-    /// poster bouncing the wrong way on an up-swipe. We let the poster finish
-    /// flying off, then drop the (now off-screen, transparent) cover instantly.
-    private func flickAway(up: Bool) {
-        let travel = UIScreen.main.bounds.height + 200
-        withAnimation(.easeOut(duration: Self.flyOffDuration)) {
-            dismissOffset = CGSize(width: 0, height: up ? -travel : travel)
-        }
-        Task { @MainActor in
-            try? await Task.sleep(for: .seconds(Self.flyOffDuration))
-            var transaction = Transaction()
-            transaction.disablesAnimations = true
-            withTransaction(transaction) { onClose() }
-        }
-    }
-
-    /// Backdrop dims toward transparent in step with the swipe — fully clear by
-    /// the time the poster has travelled a screen-height off, so the fly-off
-    /// reads as a dismissal rather than a pan.
-    private var backdropOpacity: Double {
-        let progress = min(abs(dismissOffset.height) / UIScreen.main.bounds.height, 1)
-        return 1 - progress
-    }
-}
-
-#if canImport(WebKit)
-import WebKit
-
-private struct TrailerEmbedView: UIViewRepresentable {
-    let url: URL
-
-    final class Coordinator { var loadedURL: URL? }
-    func makeCoordinator() -> Coordinator { Coordinator() }
-
-    func makeUIView(context: Context) -> WKWebView {
-        let config = WKWebViewConfiguration()
-        config.allowsInlineMediaPlayback = true
-        config.mediaTypesRequiringUserActionForPlayback = []
-        let view = WKWebView(frame: .zero, configuration: config)
-        view.backgroundColor = .black
-        view.isOpaque = false
-        view.scrollView.isScrollEnabled = false
-        return view
-    }
-
-    func updateUIView(_ webView: WKWebView, context: Context) {
-        let embedURL = TrailerEmbedHTML.withAutoplay(url)
-        guard context.coordinator.loadedURL != embedURL else { return }
-        context.coordinator.loadedURL = embedURL
-        webView.loadHTMLString(
-            TrailerEmbedHTML.embedPage(videoURL: embedURL),
-            baseURL: kinowoBaseURL
-        )
-    }
-}
-#else
-private struct TrailerEmbedView: View {
-    let url: URL
-    var body: some View { Link("filmdetail.open_trailer", destination: url) }
-}
-#endif
