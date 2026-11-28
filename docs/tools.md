@@ -517,7 +517,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/lib/identity_tooling/identity_tools_refs.py` | THE COMMANDS OF scripts/lib/identity_tooling/identity_tools.py ABOUT A CI MEASURE'S COMMITS AND A RUN'S RESULTS: the commits and branches a | `imported` | 1 tool | - | Python |
 | `scripts/lib/identity_tooling/identity_what_if_record.py` | THE WHAT-IF VERDICT RECORD, AND A CONVERGENCE RUN'S TAKES (scripts/lib; identity-tools.sh's what_if_* functions and | `imported` | 1 tool | - | Python |
 | `scripts/listing-history` | One listing's identity take over time, grouped by the worker deploy that logged it | `scripts/listing-history` | skill CLAUDE.md, identity-investigation; 4 tools | listing_history_test.py | KEEP |
-| `scripts/listing_history.py` | ONE LISTING'S IDENTITY TAKE OVER TIME (scripts/listing-history). | `scripts/listing_history.py` | 5 tools | listing_history_test.py | Python |
+| `scripts/listing_history.py` | ONE LISTING'S IDENTITY TAKE OVER TIME (scripts/listing-history). | `scripts/listing_history.py` | 6 tools | listing_history_test.py | Python |
 | `scripts/ml-identity/cross_country_experiment.py` | Cross-country agreement, OFFLINE experiment (2026-10-19, branch experiment-cross-country; docs/identity-experiments.md). | `imported` | 1 tool | - | Python |
 | `scripts/recording-diff` | Two "Record scrape fixtures" recordings compared — "is it the code, or new data?" in seconds | `scripts/recording-diff` | skill CLAUDE.md, identity-investigation; 4 tools | recording-diff-test.sh | KEEP |
 | `scripts/recording_diff.py` | TWO RECORDINGS COMPARED: did the input change, or the code? (scripts/recording-diff) | `scripts/recording_diff.py` | 3 tools | recording_diff_test.py | Python |
@@ -599,7 +599,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/local-mirror/freshness` | How current the local prod mirror (:28017) is, per country — for every tool that reads it (identity-slice --prod-mirror, listing-history, …) | `scripts/local-mirror/freshness` | wf country-convergence-leg; skill CLAUDE.md, identity-investigation; 25 tools | freshness-test.sh | KEEP |
 | `scripts/local-mirror/local-mongo.sh` | The one place that knows how to make the local mirror Mongo reachable | `scripts/local-mirror/local-mongo.sh` | 1 tool | - | KEEP |
 | `scripts/local-mirror/log-path.sh` | Where the launchd agent's stdout/stderr land | `sourced` | 3 tools | - | KEEP |
-| `scripts/local-mirror/mirror.py` | Keep a local mirror of prod's /debug data in sync, continuously, so the dev `/debug` pages read from a fast LAN Mongo | `scripts/local-mirror/mirror.py` | wf ci, mirror-pinned-images, precommit-check; skill CLAUDE.md, agent-ops, identity-investigation; 69 tools | mirror_test.py | Python |
+| `scripts/local-mirror/mirror.py` | Keep a local mirror of prod's /debug data in sync, continuously, so the dev `/debug` pages read from a fast LAN Mongo | `scripts/local-mirror/mirror.py` | wf ci, mirror-pinned-images, precommit-check; skill CLAUDE.md, agent-ops, identity-investigation; 70 tools | mirror_test.py | Python |
 | `scripts/local-mirror/mirror.sh` | Keep a local mirror of prod's /debug data in sync, continuously (mirror.py beside it; this name is what service.sh and the README run) | `scripts/local-mirror/mirror.sh` | 11 tools | mirror_test.py | KEEP |
 | `scripts/local-mirror/mirror_keeper.py` | THE PROD TUNNEL'S ONE OWNER (mirror.py --keep-tunnel), a child process of the daemon: the only thing that opens, | `imported` | 1 tool | - | Python |
 | `scripts/local-mirror/mirror_settings.py` | WHAT EVERY PROCESS OF THE MIRROR DAEMON SHARES (mirror.py): its endpoints and knobs, read once from the environment | `imported` | 4 tools | - | Python |
@@ -712,7 +712,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/mobile-version-check.sh` | Assert the Xcode project carries the shared mobile version: every MARKETING_VERSION in project.pbxproj equals mobile-version.txt | `scripts/mobile-version-check.sh` | wf ios | - | KEEP |
 | `scripts/tag-mobile-release.sh` | Force-tags the commit that actually produced a shipped mobile store build | `scripts/tag-mobile-release.sh` | wf android; 1 tool | tag-mobile-release-test.sh | KEEP |
 
-## Dev (153)
+## Dev (154)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -735,7 +735,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/design-rules/exemptions.py` | THE DESIGN EXEMPTIONS (test/resources/design-exemptions.tsv): a NEW row past a general rule admitted on purpose, as | `imported` | wf coupling-exemptions, report-timings; skill CLAUDE.md; 8 tools | - | Python |
 | `scripts/design-rules/extractors.py` | EVERY LANGUAGE'S MODULES, for the general rule core: the Python tools (python_facts.py over the quality report's | `imported` | 4 tools | - | Python |
 | `scripts/design-rules/model.py` | THE LANGUAGE-AGNOSTIC MODEL the general rule core reads (scripts/design-rules/): every language's extractor | `imported` | wf ci, convergence-bisect, country-convergence-leg +16; hook pre-push; skill CLAUDE.md, agent-ops, identity-investigation, regenerate-snapshots, test-layers; 96 tools | - | Python |
-| `scripts/design-rules/naming.py` | THE NAMING RULES, for every language (the owner's "names must match behaviour", 2026-11-19; CLAUDE.md, "Design | `imported` | wf ci, country-convergence-leg, discover-cinemas +8; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 102 tools | - | Python |
+| `scripts/design-rules/naming.py` | THE NAMING RULES, for every language (the owner's "names must match behaviour", 2026-11-19; CLAUDE.md, "Design | `imported` | wf ci, country-convergence-leg, discover-cinemas +8; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 103 tools | - | Python |
 | `scripts/design-rules/naming_lint.py` | THE NAMING LINT (the owner's "names must match behaviour", 2026-11-19), over EVERY language: the production Scala's | `python3 scripts/design-rules/naming_lint.py` | hook pre-push; skill CLAUDE.md; 6 tools | naming_lint_test.py | Python |
 | `scripts/design-rules/packages.py` | PACKAGES, for every language (CLAUDE.md, "Coupling is reviewed"): a Python or JS directory stands for a Scala | `imported` | wf android, branch-ci, ci +4; hook pre-push; skill CLAUDE.md, identity-investigation; 29 tools | - | Python |
 | `scripts/design-rules/python_facts.py` | THE PYTHON EXTRACTOR of the general rule core: a Python tool's `ast` read into a `model.Module` -- its names, the | `imported` | 2 tools | - | Python |
@@ -812,6 +812,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/lib/vcs/tool_dispatch.py` | DISPATCHING A WORKFLOW and finding the run it made, the one way the tools do it (scripts/lib; it took over the | `imported` | wf convergence-daily, identity-model-convergence, main; 11 tools | tool_dispatch_test.py | Python |
 | `scripts/lib/vcs/tool_github.py` | GITHUB THROUGH `gh`, the one way the Python tools ask it (scripts/lib): every call bounded (a hung API read is no | `imported` | skill CLAUDE.md; 26 tools | tool_github_test.py | Python |
 | `scripts/linux-tree-sync.py` | Copy a checkout's files (tracked and untracked, never ignored) into DEST, and keep DEST in step with it. | `scripts/linux-tree-sync.py` | 2 tools | linux_tree_sync_test.py | Python |
+| `scripts/listing_mirror.py` | WHAT THE LOCAL PROD MIRROR HOLDS of a listing (scripts/listing_history.py): the mongosh query over its identity | `imported` | 1 tool | - | Python |
 | `scripts/log.sh` | The four coloured output helpers long-running scripts print through (sourced) | `scripts/log.sh` | wf android; 6 tools | - | KEEP |
 | `scripts/mutation-check` | Mutation testing of the methods a change touches (Stryker4s; a report, never a gate; a name for mutation_check.py) | `scripts/mutation-check` | skill test-layers; 5 tools | mutation_check_test.py | KEEP |
 | `scripts/mutation_check.py` | Mutation testing of the methods a change touches (Stryker4s; a report, never a gate) | `scripts/mutation_check.py` | 2 tools | mutation_check_test.py | Python |

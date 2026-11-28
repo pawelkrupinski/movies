@@ -190,87 +190,126 @@ class Target:
         return self.workflow + (f" @ {self.sha[:9]}" if self.sha else f" on {self.branch}")
 
 
-def poll(target: Target, github: GitHub) -> str | None:
-    """Reads the target once; sets its verdict when answered. Returns its state line, or None when unreadable."""
-    if target.any_completed:
-        runs = github.runs(target.workflow, target.branch)
-        if runs is None:
-            return None
-        done = sorted((r for r in runs if r.completed and not r.cancelled), key=lambda r: r.created, reverse=True)
-        if done:
-            target.verdict = (done[0], "")
-            return f"newest completed run {done[0].id} at {done[0].sha[:9]}: {done[0].conclusion}"
-        return "no completed run yet"
+def _line(run: Run) -> str:
+    return f"run {run.id} at {run.sha[:9]}: {run.state()}"
 
+
+def _poll_newest_completed(target: Target, github: GitHub) -> str | None:
+    runs = github.runs(target.workflow, target.branch)
+    if runs is None:
+        return None
+    done = sorted((r for r in runs if r.completed and not r.cancelled), key=lambda r: r.created, reverse=True)
+    if not done:
+        return "no completed run yet"
+    target.verdict = (done[0], "")
+    return f"newest completed run {done[0].id} at {done[0].sha[:9]}: {done[0].conclusion}"
+
+
+def _read_own(target: Target, github: GitHub) -> "tuple[bool, list[Run] | None]":
+    """Reads the target's own run into `target.own`: (readable, the workflow's listing when it was read on the way)."""
     if target.run_id is not None:
         own = github.view(target.run_id)
         if own is None:
-            return None
+            return False, None
         # a run's workflow, branch and commit are its own: followed, it is to its workflow's later runs on its branch
         target.workflow, target.branch, target.sha, target.own = own.workflow, own.branch, own.sha, own
-        runs = None
-    else:
-        runs = github.runs(target.workflow, target.branch)
-        if runs is None:
-            return None
-        at_sha = [r for r in runs if r.sha == target.sha]
-        if not at_sha and len(runs) >= LIST_LIMIT:
-            at_sha = github.runs(target.workflow, target.branch, commit=target.sha)
-            if at_sha is None:
-                return None
-        target.own = max(at_sha, key=lambda r: r.created) if at_sha else None
-    own = target.own
+        return True, None
+    runs = github.runs(target.workflow, target.branch)
+    if runs is None:
+        return False, None
+    at_sha = [r for r in runs if r.sha == target.sha]
+    if not at_sha and len(runs) >= LIST_LIMIT:
+        at_sha = github.runs(target.workflow, target.branch, commit=target.sha)
+        if at_sha is None:
+            return False, None
+    target.own = max(at_sha, key=lambda r: r.created) if at_sha else None
+    return True, runs
 
-    if own is not None and own.completed and not own.cancelled and not (target.until_green and own.conclusion != "success"):
+
+def _settled(target: Target, own: Run) -> bool:
+    """Whether the target's own run, completed, answers it: not cancelled, and green when only green will do."""
+    return own.completed and not own.cancelled and not (target.until_green and own.conclusion != "success")
+
+
+def _own_answer(target: Target) -> str | None:
+    """The state line when the target's own run (or its absence) settles this poll without following, else None."""
+    own = target.own
+    if own is None or not own.completed:
+        if target.or_later:
+            return None
+        return f"no run at {target.sha[:9]} yet" if own is None else _line(own)
+    if _settled(target, own):
         target.verdict = (own, "")
-        return f"run {own.id} at {own.sha[:9]}: {own.state()}"
-    if own is not None and not own.completed and not target.or_later:
-        return f"run {own.id} at {own.sha[:9]}: {own.state()}"
-    if own is None and not target.or_later:
-        return f"no run at {target.sha[:9]} yet"
-    if own is not None and own.cancelled and not target.follow:
+        return _line(own)
+    if own.cancelled and not target.follow:
         target.verdict = (own, "")
         return f"run {own.id} at {own.sha[:9]}: cancelled"
+    return None
 
-    # Followed: the runs at the commit's descendants -- every time with --or-later, else because the own run was cancelled
-    if runs is None:
-        runs = github.runs(target.workflow, target.branch)
-        if runs is None:
-            return None
+
+def _descendants(target: Target, runs: "list[Run]", github: GitHub) -> "list[Run] | None":
+    """The listing's runs at commits descending from the target's (None: ancestry could not be told)."""
     later = []
-    for r in runs:
-        if r.sha == target.sha:
-            continue
+    for r in (r for r in runs if r.sha != target.sha):
         descends = github.ancestry(target.sha, r.sha)
         if descends is None:
             return None
         if descends:
             later.append(r)
-    candidates = ([own] if own is not None else []) + later
-    if target.until_green:
-        answered = [r for r in candidates if r.completed and r.conclusion == "success"]
-    else:
-        answered = [r for r in candidates if r.completed and not r.cancelled]
-    if answered:
-        first = min(answered, key=lambda r: (r.updated, r.created))
-        note = ""
-        if own is not None and first.id != own.id:
-            note = f"superseded run {own.id} at {own.sha[:9]} ({own.state()})"
-        elif own is None:
-            note = f"no run at {target.sha[:9]}; first at or after it"
-        target.verdict = (first, note)
-        return f"run {first.id} at {first.sha[:9]}: {first.state()}" + (f" -- {note}" if note else "")
+    return later
+
+
+def _first_answer(target: Target, candidates: "list[Run]") -> str | None:
+    """Sets the verdict to the first candidate that answers it; returns the state line."""
+    own = target.own
+    answered = [r for r in candidates if r.completed and (r.conclusion == "success" if target.until_green else not r.cancelled)]
+    if not answered:
+        return None
+    first = min(answered, key=lambda r: (r.updated, r.created))
+    note = ""
+    if own is not None and first.id != own.id:
+        note = f"superseded run {own.id} at {own.sha[:9]} ({own.state()})"
+    elif own is None:
+        note = f"no run at {target.sha[:9]}; first at or after it"
+    target.verdict = (first, note)
+    return _line(first) + (f" -- {note}" if note else "")
+
+
+def _unanswered(target: Target, candidates: "list[Run]", later: "list[Run]") -> str:
+    """The state line when no candidate has answered: one still running, none yet, or the own run cancelled alone."""
+    own = target.own
     running = [r for r in candidates if not r.completed]
     if running:
         newest = max(running, key=lambda r: r.created)
-        head = f"run {own.id} at {own.sha[:9]} {own.state()}; " if own is not None else f"no run at {target.sha[:9]}; "
+        head = f"{_line(own)}; " if own is not None else f"no run at {target.sha[:9]}; "
         return head + f"waiting on run {newest.id} at {newest.sha[:9]} ({newest.state()})"
     if target.or_later:
         return f"no {'green ' if target.until_green else ''}run at or after {target.sha[:9]} yet"
     # cancelled, and nothing running or done after it: cancelled by hand, or every successor cancelled too
+    assert own is not None
     target.verdict = (own, "cancelled; nothing superseded it" if not later else "cancelled; every later run cancelled too")
     target.cancelled_alone = True
     return f"run {own.id} at {own.sha[:9]}: cancelled, nothing superseded it"
+
+
+def _follow(target: Target, runs: "list[Run] | None", github: GitHub) -> str | None:
+    """The runs at the commit's descendants -- every time with --or-later, else because the own run was cancelled."""
+    runs = runs if runs is not None else github.runs(target.workflow, target.branch)
+    later = None if runs is None else _descendants(target, runs, github)
+    if later is None:
+        return None
+    candidates = ([target.own] if target.own is not None else []) + later
+    return _first_answer(target, candidates) or _unanswered(target, candidates, later)
+
+
+def poll(target: Target, github: GitHub) -> str | None:
+    """Reads the target once; sets its verdict when answered. Returns its state line, or None when unreadable."""
+    if target.any_completed:
+        return _poll_newest_completed(target, github)
+    readable, runs = _read_own(target, github)
+    if not readable:
+        return None
+    return _own_answer(target) or _follow(target, runs, github)
 
 
 def exit_status(targets: list) -> int:
@@ -290,49 +329,65 @@ def parent_alive():
     return lambda: os.getppid() == parent
 
 
+def _poll_all(targets: list, github: GitHub, clock: Clock) -> bool:
+    """Reads every unanswered target once, logging each state change; whether any read was unreadable."""
+    unreadable = False
+    for t in (t for t in targets if not t.verdict):
+        state = poll(t, github)
+        if state is None:
+            unreadable = True
+        elif state != t.state:
+            t.state = state
+            print(f"{clock.wall()} {t.label()}: {state}", file=sys.stderr, flush=True)
+    return unreadable
+
+
+def _verdict_line(t: Target, ended: str) -> str:
+    if t.verdict:
+        run, note = t.verdict
+        return "\t".join([str(run.id), run.sha, run.conclusion, t.workflow or t.label(), note]).rstrip("\t")
+    own = t.own
+    return "\t".join([str(own.id) if own else "-", own.sha if own else (t.sha or "-"),
+                      ended, t.workflow or t.label(), t.state]).rstrip("\t")
+
+
+def _decided(targets: list) -> bool:
+    """Whether every target is answered, or one has already failed (nothing more to wait for)."""
+    failed = any(t.verdict and t.verdict[0].conclusion not in ("success", "cancelled") for t in targets)
+    return failed or all(t.verdict for t in targets)
+
+
+def _stop_reason(misses: int, max_misses: int, clock: Clock, deadline: float, timeout_s: float,
+                 caller_alive: Callable[[], bool]) -> str | None:
+    """Why the wait ends now, said on stderr (None: it goes on)."""
+    if misses >= max_misses:
+        say(f"{misses} unreadable reads in a row: no verdict")
+        return "unreadable"
+    if clock.now() >= deadline:
+        say(f"timed out after {timeout_s / 60:g} min")
+        return "timeout"
+    if not caller_alive():
+        say("the caller is gone: stopping")
+        return "orphaned"
+    return None
+
+
 def wait(targets: list, github: GitHub, clock: Clock, timeout_s: float, interval_s: float, max_misses: int,
-         caller_alive=lambda: True, out: Callable[[str], object] = print) -> int:
+         caller_alive: Callable[[], bool] = lambda: True, out: Callable[[str], object] = print) -> int:
     """Waits on `targets`: each one's verdict line goes to `out` (the tool prints it on stdout), the exit status back."""
     deadline = clock.now() + timeout_s
     misses = 0
-    ended = "pending"
+    ended: str | None = "pending"
     while True:
-        unreadable = False
-        for t in targets:
-            if t.verdict:
-                continue
-            state = poll(t, github)
-            if state is None:
-                unreadable = True
-                continue
-            if state != t.state:
-                t.state = state
-                print(f"{clock.wall()} {t.label()}: {state}", file=sys.stderr, flush=True)
-        misses = misses + 1 if unreadable else 0
-        failed = any(t.verdict and t.verdict[0].conclusion not in ("success", "cancelled") for t in targets)
-        if all(t.verdict for t in targets) or failed:
+        misses = misses + 1 if _poll_all(targets, github, clock) else 0
+        if _decided(targets):
             break
-        if misses >= max_misses:
-            say(f"{misses} unreadable reads in a row: no verdict")
-            ended = "unreadable"
-            break
-        if clock.now() >= deadline:
-            say(f"timed out after {timeout_s / 60:g} min")
-            ended = "timeout"
-            break
-        if not caller_alive():
-            say("the caller is gone: stopping")
-            ended = "orphaned"
+        ended = _stop_reason(misses, max_misses, clock, deadline, timeout_s, caller_alive)
+        if ended:
             break
         clock.sleep(interval_s)
     for t in targets:
-        if t.verdict:
-            run, note = t.verdict
-            out("\t".join([str(run.id), run.sha, run.conclusion, t.workflow or t.label(), note]).rstrip("\t"))
-        else:
-            own = t.own
-            out("\t".join([str(own.id) if own else "-", own.sha if own else (t.sha or "-"),
-                             ended, t.workflow or t.label(), t.state]).rstrip("\t"))
+        out(_verdict_line(t, ended or "pending"))
     return exit_status(targets)
 
 

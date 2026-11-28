@@ -148,8 +148,6 @@ cognitive	scripts/ci/upstream_run.py:choose	14
 cognitive	scripts/ci/upstream_run.py:main	11
 cognitive	scripts/ci/workflow_steps.py:action_steps	13
 cognitive	scripts/ci/xcresult_annotations.py:annotations	11
-cognitive	scripts/ci_wait.py:poll	58
-cognitive	scripts/ci_wait.py:wait	37
 cognitive	scripts/claude-hooks/foreground-wait-guard:unbounded_wait	12
 cognitive	scripts/claude-hooks/foreground-wait-guard:waits	28
 cognitive	scripts/claude-hooks/unbounded-poll-guard:fix_for	19
@@ -331,8 +329,6 @@ cyclomatic	scripts/ci/xcresult_junit.py:junit	15
 cyclomatic	scripts/ci_status.py:run_lines	13
 cyclomatic	scripts/ci_status.py:workflow_lines	11
 cyclomatic	scripts/ci_wait.py:parse	11
-cyclomatic	scripts/ci_wait.py:poll	55
-cyclomatic	scripts/ci_wait.py:wait	22
 cyclomatic	scripts/claude-hooks/foreground-wait-guard:waits	19
 cyclomatic	scripts/claude-hooks/owner-decisions:pending_decisions	11
 cyclomatic	scripts/claude-hooks/unbounded-poll-guard:fix_for	23
@@ -397,7 +393,6 @@ method-lines	scripts/ci/identity_judgements.py:problems	51
 method-lines	scripts/ci/population_walk_diff.py:main	52
 method-lines	scripts/ci/recording_health.py:main	70
 method-lines	scripts/ci/runner_scheduler.py:decide	216
-method-lines	scripts/ci_wait.py:poll	81
 method-lines	scripts/deploy_watch.py:main	79
 method-lines	scripts/identity_rule_ablation.py:main	82
 method-lines	scripts/identity_stamp_carry.py:auto	56
