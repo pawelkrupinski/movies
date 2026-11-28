@@ -146,6 +146,32 @@ def judge_units(kind: str, units: list[str], system_scope: bool, restartable: Pa
     return forgiven, disruptive, refused
 
 
+class LineVerdict(typing.NamedTuple):
+    """Where one output line goes: disruptive, reloads, unrecognised, forgiven, refused (each a list)."""
+    disruptive: list[str]
+    reloads: list[str]
+    unrecognised: list[str]
+    forgiven: list[str]
+    refused: list[str]
+
+
+def line_verdict(line: str, pid1_unchanged: bool, restartable: Patterns, never: Patterns,
+                 leniency: Leniency) -> LineVerdict:
+    if not line or is_benign(line, pid1_unchanged):
+        return LineVerdict([], [], [], [], [])
+    hard = hard_disruption(line)
+    if hard is not None:
+        return LineVerdict([hard], [], [], [], [])
+    named = unit_line(line)
+    if named is None:
+        return LineVerdict([], [], [line], [], [])
+    kind, units, system_scope = named
+    if kind == "reload":
+        return LineVerdict([], units, [], [], [])
+    forgiven, disruptive, refused = judge_units(kind, units, system_scope, restartable, never, leniency)
+    return LineVerdict(disruptive, [], [], forgiven, refused)
+
+
 def classify_output(text: str, restartable: Patterns = (), never: Patterns = (), pid1_unchanged: bool = False,
                     leniency: Leniency = Leniency()) -> DryActivate:
     """Sort every line into disturbs-something, merely-reloads, or not-recognised.
@@ -160,27 +186,8 @@ def classify_output(text: str, restartable: Patterns = (), never: Patterns = (),
     the recorded-output cases can state it: when true, `would restart systemd` re-executes the very
     binary and config PID 1 already runs, and is benign.
     """
-    disruptive: list[str] = []
-    reloads: list[str] = []
-    unrecognised: list[str] = []
-    forgiven: list[str] = []
-    refused: list[str] = []
-
-    for line in (raw.strip() for raw in text.splitlines()):
-        if not line or is_benign(line, pid1_unchanged):
-            continue
-        hard = hard_disruption(line)
-        named = unit_line(line)
-        if hard is not None:
-            disruptive.append(hard)
-        elif named is None:
-            unrecognised.append(line)
-        elif named[0] == "reload":
-            reloads.extend(named[1])
-        else:
-            kind, units, system_scope = named
-            judged = judge_units(kind, units, system_scope, restartable, never, leniency)
-            for into, found in zip((forgiven, disruptive, refused), judged):
-                into.extend(found)
-
+    verdicts = [line_verdict(raw.strip(), pid1_unchanged, restartable, never, leniency)
+                for raw in text.splitlines()]
+    disruptive, reloads, unrecognised, forgiven, refused = (
+        [item for verdict in verdicts for item in verdict[field]] for field in range(5))
     return DryActivate(disruptive, reloads, unrecognised, tuple(forgiven), tuple(sorted(set(refused))))

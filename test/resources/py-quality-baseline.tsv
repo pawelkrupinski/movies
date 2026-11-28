@@ -43,7 +43,6 @@ cognitive	infra/nix/files/identity-regressions.py:build_net_lost	14
 cognitive	infra/nix/files/identity-regressions.py:episodes	13
 cognitive	infra/nix/files/identity-regressions.py:film_net_lost	13
 cognitive	infra/nix/files/identity-regressions.py:load_judgements	11
-cognitive	infra/nix/files/nixos_auto_apply/applier_classify.py:classify_output	12
 cognitive	infra/nix/files/scheduled_dispatch.py:Slot.ensure	18
 cognitive	infra/nix/files/scheduled_dispatch.py:Slot.guard	19
 cognitive	infra/nix/files/scheduled_dispatch.py:_field	16
@@ -138,7 +137,6 @@ cyclomatic	infra/bin/image_pins.py:propose_gitops	12
 cyclomatic	infra/bin/nix-update:bump_mongodb	12
 cyclomatic	infra/bin/nix-update:update	15
 cyclomatic	infra/bin/snapshot-label-values:main	11
-cyclomatic	infra/bin/stage-nixos-closures:main	13
 cyclomatic	infra/nix/files/identity-regressions.py:build_net_lost	17
 cyclomatic	infra/nix/files/identity-regressions.py:episodes	11
 cyclomatic	infra/nix/files/identity-regressions.py:film_net_lost	12

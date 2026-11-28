@@ -384,6 +384,23 @@ def activation_help(pending: "list[tuple[str, str, str]]") -> list[str]:
     return lines
 
 
+def report(results: "list[tuple[str, str | None, str, str | None, dict[str, float]]]") -> int:
+    """Print one line per host, how to activate what was staged, and the verdict: 1 when a host could not be staged."""
+    for result in results:
+        print(result_line(*result))
+    pending = [(name, address, detail) for name, address, state, detail, _ in results if state == "staged"]
+    failed = [result for result in results if result[2] not in ("staged", "already running")]
+    if pending:
+        print("\n".join(activation_help(pending)))
+    if failed:
+        print(f"\n{len(failed)} host(s) could not be staged, so what they would run is not "
+              f"prepared and not known.")
+        return 1
+    if not pending:
+        print("\nevery host is already running the closure this tree declares.")
+    return 0
+
+
 def main():
     wanted = sys.argv[1:]
     problem = preflight()
@@ -406,19 +423,7 @@ def main():
     with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
         results = sorted(pool.map(stage, names))
 
-    for result in results:
-        print(result_line(*result))
-    pending = [(name, address, detail) for name, address, state, detail, _ in results if state == "staged"]
-    failed = [result for result in results if result[2] not in ("staged", "already running")]
-    if pending:
-        print("\n".join(activation_help(pending)))
-    if failed:
-        print(f"\n{len(failed)} host(s) could not be staged, so what they would run is not "
-              f"prepared and not known.")
-        return 1
-    if not pending:
-        print("\nevery host is already running the closure this tree declares.")
-    return 0
+    return report(results)
 
 
 if __name__ == "__main__":
