@@ -154,10 +154,8 @@ scripts/identity_fetch_recording.py
 .github/actions/seed-sbt-runner/action.yml
 .github/actions/setup-buildx/action.yml
 .github/actions/setup-sbt-build/action.yml
-.github/allow-lists.txt
 .github/gating-checks.tsv
 .github/harness-aa-paths.txt
-.github/identity-drift-gate-paths.txt
 .github/pinned-images.tsv
 .github/scripts/convergence-fill.sh
 .github/scripts/convergence-findings-summary.sh

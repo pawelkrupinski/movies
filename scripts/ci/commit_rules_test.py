@@ -23,6 +23,7 @@ from harness import sandbox_closure  # noqa: E402
 from seams.tool_files import Files  # noqa: E402
 SCRATCH_GIT = os.path.join(ROOT, "scripts/scratch-git.sh")
 TOOL_PATH = "scripts/ci/commit_rules.py"
+RETYPES_PATH = "scripts/ci/retype_rules.py"  # where retypes_only and its guards live
 TOOL = os.path.join(ROOT, TOOL_PATH)
 LIST = "test/resources/fixtures/identity-flips-allow.tsv"
 HEAD = "# reviewed flips\ncountry\tvenue\trawTitle\treason\n"
@@ -160,14 +161,14 @@ class RatchetTest(unittest.TestCase):
 
     def test_a_path_missing_from_a_revision_is_absent_but_a_revision_git_cannot_read_is_no_answer(self):
         sys.path.insert(0, HERE)
-        import commit_rules
+        import commit_facts
         here = os.getcwd()
         os.chdir(self.repo)
         try:
-            self.assertEqual(HEAD, commit_rules.at(self.base, LIST))
-            self.assertEqual("", commit_rules.at(self.base, "no/such/file"))
+            self.assertEqual(HEAD, commit_facts.at(self.base, LIST))
+            self.assertEqual("", commit_facts.at(self.base, "no/such/file"))
             with self.assertRaises(subprocess.CalledProcessError):
-                commit_rules.at("0" * 40, LIST)  # what a shallow clone's missing parent looks like
+                commit_facts.at("0" * 40, LIST)  # what a shallow clone's missing parent looks like
         finally:
             os.chdir(here)
 
@@ -556,14 +557,14 @@ class RatchetTest(unittest.TestCase):
     )
 
     def test_every_retypes_only_guard_is_load_bearing(self):
-        with open(TOOL) as f:
+        with open(os.path.join(ROOT, RETYPES_PATH)) as f:
             source = f.read()
         for old, new, case, edit, shape in self.RETYPE_MUTATIONS:
             self.assertIn(old, source, f"the mutation for {case} no longer applies: update RETYPE_MUTATIONS")
             sandbox = os.path.join(self.dir.name, "sandbox")
             sandbox_closure.copy(Files.here(), ROOT, sandbox, [TOOL_PATH])  # the tool and every module it imports
             mutant = os.path.join(sandbox, TOOL_PATH)
-            with open(mutant, "w") as f:
+            with open(os.path.join(sandbox, RETYPES_PATH), "w") as f:
                 f.write(source.replace(old, new, 1))
             if shape == "using":
                 before = self.WAIT.replace("clock: Clock, limit", "limit").replace(") {", ")(using clock: Clock) {")

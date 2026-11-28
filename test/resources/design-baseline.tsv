@@ -119,6 +119,8 @@ effect	scripts/agent_procs_watchers.py:files	3
 effect	scripts/agent_time.py	2
 effect	scripts/agent_time.py:files	7
 effect	scripts/aot-class-list.py:files	1
+effect	scripts/ci/allow_list_rules.py	1
+effect	scripts/ci/allow_list_rules.py:files	1
 effect	scripts/ci/archive_recording.py:files	8
 effect	scripts/ci/baseline_ratchet.py:files	5
 effect	scripts/ci/build_image.py:files	4
@@ -131,8 +133,6 @@ effect	scripts/ci/ci_timings.py	1
 effect	scripts/ci/ci_timings.py:files	1
 effect	scripts/ci/ci_trends.py	2
 effect	scripts/ci/close_mongo_tunnel.py:network	1
-effect	scripts/ci/commit_rules.py	1
-effect	scripts/ci/commit_rules.py:files	1
 effect	scripts/ci/convergence_forge.py	1
 effect	scripts/ci/convergence_forge.py:files	3
 effect	scripts/ci/convergence_paths.py:files	5
@@ -227,6 +227,7 @@ effect	scripts/ci/ratchet_diff.py:files	1
 effect	scripts/ci/recording_health.py:files	7
 effect	scripts/ci/recording_preflight.py	1
 effect	scripts/ci/recording_preflight.py:files	3
+effect	scripts/ci/retype_rules.py	1
 effect	scripts/ci/reusable_workflow_inputs.py:files	2
 effect	scripts/ci/runner_cache.py	1
 effect	scripts/ci/runner_cache.py:files	20
@@ -688,6 +689,9 @@ mixed	scripts/agent_time.py:default_tasks_dir	8
 mixed	scripts/agent_time.py:load	10
 mixed	scripts/agent_time.py:read_events	3
 mixed	scripts/aot-class-list.py:kept_names	4
+mixed	scripts/ci/allow_list_rules.py:listed_rows	5
+mixed	scripts/ci/allow_list_rules.py:registered	5
+mixed	scripts/ci/allow_list_rules.py:slice_listings	7
 mixed	scripts/ci/archive_recording.py:Archiver.corpus	5
 mixed	scripts/ci/archive_recording.py:Archiver.tree	9
 mixed	scripts/ci/archive_recording.py:Archiver.upload	3
@@ -718,13 +722,8 @@ mixed	scripts/ci/ci_timings.py:GitHub.json	4
 mixed	scripts/ci/ci_timings.py:GitHub.log	3
 mixed	scripts/ci/ci_timings.py:handle	7
 mixed	scripts/ci/ci_trends.py:repo_of	4
-mixed	scripts/ci/commit_rules.py:Commit.read	7
+mixed	scripts/ci/commit_facts.py:Commit.read	7
 mixed	scripts/ci/commit_rules.py:check	10
-mixed	scripts/ci/commit_rules.py:code_lines	7
-mixed	scripts/ci/commit_rules.py:defines	3
-mixed	scripts/ci/commit_rules.py:gauges_before_behaviour	16
-mixed	scripts/ci/commit_rules.py:known	16
-mixed	scripts/ci/commit_rules.py:registered	5
 mixed	scripts/ci/convergence_forge.py:key	6
 mixed	scripts/ci/convergence_forge.py:main_base	5
 mixed	scripts/ci/convergence_forge.py:pair_of	5
@@ -767,6 +766,7 @@ mixed	scripts/ci/drift_diff.py:allowed	5
 mixed	scripts/ci/drift_diff.py:backlog	6
 mixed	scripts/ci/drift_diff.py:struck	5
 mixed	scripts/ci/drift_explorer.py:file	8
+mixed	scripts/ci/drift_guard_rules.py:shipped_gauge_problem	6
 mixed	scripts/ci/drift_seeds.py:add	6
 mixed	scripts/ci/drift_seeds.py:seeds_text	4
 mixed	scripts/ci/family_flips_report.py:joined	3
@@ -908,6 +908,8 @@ mixed	scripts/ci/quality_ratchet.py:update_one	4
 mixed	scripts/ci/ratchet_diff.py:Untouched.__init__	5
 mixed	scripts/ci/ratchet_diff.py:renames	5
 mixed	scripts/ci/recording_preflight.py:probe	4
+mixed	scripts/ci/retype_rules.py:code_lines	7
+mixed	scripts/ci/retype_rules.py:defines	3
 mixed	scripts/ci/run_metrics.py:metrics_record	3
 mixed	scripts/ci/runner_cache.py:_remove_restored	6
 mixed	scripts/ci/runner_cache.py:mirror_dir	6
