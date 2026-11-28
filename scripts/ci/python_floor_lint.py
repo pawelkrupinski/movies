@@ -44,18 +44,28 @@ def floor_of(root):
     return int(found.group(1)), int(found.group(2))
 
 
-def _is_python_file(root: str, path: str) -> bool:
-    """A tracked `.py` file, or an extension-less one whose first line is a python shebang."""
-    name = os.path.basename(path)
+def _python_by_name(name: str) -> Optional[bool]:
+    """True for a `.py` name, False for any other with an extension, None for one with none (its first line decides)."""
     if name.endswith(".py"):
         return True
-    if "." in name:
-        return False
+    return False if "." in name else None
+
+
+def _first_line(root: str, path: str) -> bytes:
+    """The file's first line, empty where it cannot be read."""
     try:
         with open(os.path.join(root, path), "rb") as f:
-            first = f.readline()
+            return f.readline()
     except OSError:
-        return False
+        return b""
+
+
+def _is_python_file(root: str, path: str) -> bool:
+    """A tracked `.py` file, or an extension-less one whose first line is a python shebang."""
+    by_name = _python_by_name(os.path.basename(path))
+    if by_name is not None:
+        return by_name
+    first = _first_line(root, path)
     return first.startswith(b"#!") and b"python" in first
 
 

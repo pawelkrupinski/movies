@@ -341,19 +341,28 @@ def _parse_args(argv: List[str]) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
+def _read_current(path: str) -> Rows:
+    with open(path) as f:
+        return parse(f.read())
+
+
+def _check_chosen(chosen: List[Ratchet], current: Rows, ranges: List[str]) -> int:
+    """Each chosen ratchet checked (the length one's data tables too): 0 when all hold, else 1."""
+    renames = Renames()
+    results = [check_one(ratchet, current, ranges, renames) for ratchet in chosen]
+    if RATCHETS["length"] in chosen:
+        results.append(check_tables(current, ranges))
+    return 0 if all(results) else 1
+
+
 def _run(args: argparse.Namespace) -> int:
-    with open(args.current) as f:
-        current = parse(f.read())
+    current = _read_current(args.current)
     chosen = [RATCHETS[name] for name in (args.ratchet or sorted(RATCHETS))]
     if args.command == "update":
         for ratchet in chosen:
             update_one(ratchet, current)
         return 0
-    renames = Renames()
-    results = [check_one(ratchet, current, args.range, renames) for ratchet in chosen]
-    if RATCHETS["length"] in chosen:
-        results.append(check_tables(current, args.range))
-    return 0 if all(results) else 1
+    return _check_chosen(chosen, current, args.range)
 
 
 def main(argv: List[str]) -> int:

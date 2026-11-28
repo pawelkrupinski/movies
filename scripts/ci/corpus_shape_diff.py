@@ -41,13 +41,16 @@ def specs_of(directory, cc):
     return {os.path.basename(p)[len(prefix):-len(".txt")]: p for p in glob.glob(os.path.join(directory, prefix + "*.txt"))}
 
 
-def _spec_findings(spec: str, path: str) -> Iterator[tuple[tuple[str, str, str, str], str]]:
-    """((spec, kind, venue, listing), what) of each finding line of one spec's corpus-shape file."""
+def _lines_of(path: str) -> list[str]:
     with open(path, encoding="utf-8") as f:
-        for line in f:
-            cols = line.rstrip("\n").split("\t")
-            if len(cols) >= 3:
-                yield (spec, cols[0], cols[1], cols[2]), (cols[3] if len(cols) > 3 else "")
+        return f.read().splitlines()
+
+
+def _spec_findings(spec: str, lines: list[str]) -> Iterator[tuple[tuple[str, str, str, str], str]]:
+    """((spec, kind, venue, listing), what) of each finding line of one spec's corpus-shape file."""
+    for cols in (line.split("\t") for line in lines):
+        if len(cols) >= 3:
+            yield (spec, cols[0], cols[1], cols[2]), (cols[3] if len(cols) > 3 else "")
 
 
 def findings_of(directory, cc):
@@ -58,7 +61,7 @@ def findings_of(directory, cc):
         return None
     out = {}
     for spec, path in sorted(specs.items()):
-        for key, what in _spec_findings(spec, path):
+        for key, what in _spec_findings(spec, _lines_of(path)):
             out.setdefault(key, []).append(what)
     return out
 

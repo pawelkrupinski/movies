@@ -208,7 +208,7 @@ effect	scripts/ci/identity_takes_check_verdict.py:files	3
 effect	scripts/ci/job_metrics.py:files	17
 effect	scripts/ci/job_metrics.py:network	1
 effect	scripts/ci/js_quality_ratchet.py:files	1
-effect	scripts/ci/lint_per_file_check.py:files	10
+effect	scripts/ci/lint_per_file_check.py:files	9
 effect	scripts/ci/lint_reads_trace.py	2
 effect	scripts/ci/lint_reads_trace.py:files	17
 effect	scripts/ci/mirror_pinned_images.py	1
@@ -733,7 +733,6 @@ mixed	scripts/ci/convergence_reuse.py:suite_of	5
 mixed	scripts/ci/convergence_rows.py:cmd_costs	4
 mixed	scripts/ci/convergence_rows.py:cmd_plan	6
 mixed	scripts/ci/convergence_slots.py:read_costs	5
-mixed	scripts/ci/corpus_shape_diff.py:findings_of	6
 mixed	scripts/ci/countries_disagree.py:export	3
 mixed	scripts/ci/coupling_exemption_history.py:check_exemptions	4
 mixed	scripts/ci/coupling_exemption_history.py:coupling_trailers	3
@@ -757,7 +756,7 @@ mixed	scripts/ci/decodo-probe.py:probe	5
 mixed	scripts/ci/drift_diff.py:allowed	5
 mixed	scripts/ci/drift_diff.py:backlog	6
 mixed	scripts/ci/drift_diff.py:struck	5
-mixed	scripts/ci/drift_explorer.py:file	8
+mixed	scripts/ci/drift_explorer.py:file	6
 mixed	scripts/ci/drift_guard_rules.py:shipped_gauge_problem	6
 mixed	scripts/ci/drift_seeds.py:add	6
 mixed	scripts/ci/drift_seeds.py:seeds_text	4
@@ -848,12 +847,10 @@ mixed	scripts/ci/job_metrics.py:start	4
 mixed	scripts/ci/job_metrics.py:table	8
 mixed	scripts/ci/js_quality_ratchet.py:production_paths	6
 mixed	scripts/ci/landing_check_for_tree.py:runs	5
-mixed	scripts/ci/lint_per_file_check.py:marked_specs	7
 mixed	scripts/ci/lint_per_file_check.py:mutated	6
 mixed	scripts/ci/lint_reads_trace.py:atime_moves	3
 mixed	scripts/ci/lint_reads_trace.py:observe	9
 mixed	scripts/ci/lint_reads_trace.py:read_observed	3
-mixed	scripts/ci/lint_reads_trace.py:registry_specs	7
 mixed	scripts/ci/lint_reads_trace.py:tracked	6
 mixed	scripts/ci/mirror_pinned_images.py:Skopeo.call	4
 mixed	scripts/ci/mirror_pinned_images.py:Skopeo.served	3
@@ -893,7 +890,7 @@ mixed	scripts/ci/pull_pinned_image.py:Puller.pull	4
 mixed	scripts/ci/pull_pinned_image.py:read_pin	5
 mixed	scripts/ci/python_floor_lint.py:floor_interpreter	5
 mixed	scripts/ci/python_floor_lint.py:floor_syntax	3
-mixed	scripts/ci/python_floor_lint.py:python_files	9
+mixed	scripts/ci/python_floor_lint.py:python_files	5
 mixed	scripts/ci/quality_metrics.py:send	3
 mixed	scripts/ci/quality_ratchet.py:check_tables	7
 mixed	scripts/ci/quality_ratchet.py:update_one	4
@@ -903,7 +900,7 @@ mixed	scripts/ci/recording_preflight.py:probe	4
 mixed	scripts/ci/retype_rules.py:code_lines	7
 mixed	scripts/ci/retype_rules.py:defines	3
 mixed	scripts/ci/run_metrics.py:metrics_record	3
-mixed	scripts/ci/runner_cache.py:_remove_restored	6
+mixed	scripts/ci/runner_cache.py:_remove_restored	3
 mixed	scripts/ci/runner_cache.py:mirror_dir	6
 mixed	scripts/ci/runner_cache.py:restore	6
 mixed	scripts/ci/runner_cache.py:save	8

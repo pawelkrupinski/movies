@@ -159,15 +159,23 @@ def save(directory, key, paths_text, root):
             os.unlink(temporary.name)
 
 
-def _remove_path(path: str) -> None:
-    """A restored path gone, whatever it is: a directory tree, or a file or link (one already gone is no matter)."""
-    if os.path.isdir(path) and not os.path.islink(path):
-        shutil.rmtree(path, ignore_errors=True)
-        return
+def _is_tree(path: str) -> bool:
+    return os.path.isdir(path) and not os.path.islink(path)
+
+
+def _unlink(path: str) -> None:
     try:
         os.unlink(path)
     except OSError:
         pass
+
+
+def _remove_path(path: str) -> None:
+    """A restored path gone, whatever it is: a directory tree, or a file or link (one already gone is no matter)."""
+    if _is_tree(path):
+        shutil.rmtree(path, ignore_errors=True)
+    else:
+        _unlink(path)
 
 
 def _remove_restored(paths_text):

@@ -234,10 +234,15 @@ def misses(observed, hook=HOOK):
             if not p.endswith("/") and spec not in selection[p]]
 
 
+def rows_of(lines: List[str]) -> List[List[str]]:
+    """The registry's rows (blank and comment lines left out), split into columns."""
+    return [l.split("\t") for l in lines if l.strip() and not l.startswith("#")]
+
+
 def registry_rows() -> List[List[str]]:
     """The lint registry's rows, split into columns."""
     with open(REGISTRY) as f:
-        return [l.rstrip("\n").split("\t") for l in f if l.strip() and not l.startswith("#")]
+        return rows_of(f.read().splitlines())
 
 
 def registry_specs():
