@@ -97,7 +97,6 @@ cognitive	scripts/ci/identity_impact.py:path_reach	12
 cognitive	scripts/ci/identity_impact.py:plan	36
 cognitive	scripts/ci/identity_impact.py:roster_names	36
 cognitive	scripts/ci/identity_impact.py:title_rules_reach.loads	18
-cognitive	scripts/ci/identity_judgements.py:problems	50
 cognitive	scripts/ci/identity_judgements_lint.py:served_findings	19
 cognitive	scripts/ci/identity_run_shards.py:plan	16
 cognitive	scripts/ci/identity_takes_diff.py:main	16
@@ -270,7 +269,6 @@ cyclomatic	scripts/ci/identity_impact.py:path_reach	11
 cyclomatic	scripts/ci/identity_impact.py:plan	22
 cyclomatic	scripts/ci/identity_impact.py:roster_names	16
 cyclomatic	scripts/ci/identity_impact.py:title_rules_reach.loads	13
-cyclomatic	scripts/ci/identity_judgements.py:problems	29
 cyclomatic	scripts/ci/identity_run_shards.py:plan	13
 cyclomatic	scripts/ci/identity_takes_diff.py:main	19
 cyclomatic	scripts/ci/identity_takes_diff.py:render	17
@@ -370,7 +368,6 @@ method-lines	infra/nix/files/nixos-auto-apply.py:classify_and_apply	127
 method-lines	infra/nix/files/nixos-auto-apply.py:classify_output	59
 method-lines	infra/nix/files/nixos-auto-apply.py:main	92
 method-lines	infra/nix/files/nixos-auto-apply.py:publish	56
-method-lines	scripts/ci/identity_judgements.py:problems	51
 method-lines	scripts/ci/runner_scheduler.py:decide	216
 method-lines	scripts/deploy_watch.py:main	79
 method-lines	scripts/identity_rule_ablation.py:main	82
@@ -424,8 +421,7 @@ pyright	scripts/ci/harness_aa.py	14
 pyright	scripts/ci/hotspots.py	19
 pyright	scripts/ci/identity_findings_report.py	120
 pyright	scripts/ci/identity_impact.py	77
-pyright	scripts/ci/identity_judgements.py	67
-pyright	scripts/ci/identity_judgements_lint.py	70
+pyright	scripts/ci/identity_judgements_lint.py	69
 pyright	scripts/ci/identity_live_drift.py	29
 pyright	scripts/ci/identity_run_shards.py	7
 pyright	scripts/ci/identity_takes.py	19
@@ -468,7 +464,7 @@ pyright	scripts/identity_what_if.py	122
 pyright	scripts/ios-simulators	12
 pyright	scripts/linux-tree-sync.py	25
 pyright	scripts/listing_history.py	46
-pyright	scripts/ml-identity/cross_country_experiment.py	19
+pyright	scripts/ml-identity/cross_country_experiment.py	18
 pyright	scripts/ops/dumpheap.py	13
 pyright	scripts/poster_hash.py	13
 pyright	scripts/recording_diff.py	87
