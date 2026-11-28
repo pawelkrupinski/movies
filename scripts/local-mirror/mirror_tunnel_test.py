@@ -99,9 +99,9 @@ class TermInWaitTest(MirrorCase):
     def test_the_keeper_termed_mid_probe_closes_its_tunnel_and_ends(self) -> None:
         self.start(**self.armed())
         self.until_tailing()
-        self.term_in_wait("keeper")
         [ssh] = self.ssh_pids()
-        keeper = int(described(ssh).split()[1])
+        keeper = int(described(ssh).split()[1])  # read before arming: a TERMed keeper closes this ssh at once
+        self.term_in_wait("keeper")
         self.fired()
         self.until(f"the TERMed keeper kept its tunnel: {described(ssh)}", lambda: gone(ssh))
         self.until(f"the TERMed keeper never ended: {described(keeper)}", lambda: gone(keeper))
