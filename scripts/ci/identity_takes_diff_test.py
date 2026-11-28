@@ -299,5 +299,14 @@ class TakesDiffTest(unittest.TestCase):
         self.assertNotIn("Suspect takes", self.read(summary))
 
 
+class JudgementWarningsTest(unittest.TestCase):
+    def test_only_accepted_moves_a_judgement_decides_warn(self):
+        moves = [{"judge": True, "accepted": True, "venue": "v", "rawTitle": "T", "new": "tmdb:1"},
+                 {"judge": True, "accepted": False, "venue": "w", "rawTitle": "U", "new": "tmdb:2"},
+                 {"judge": False, "accepted": True, "venue": "x", "rawTitle": "V", "new": "tmdb:3"}]
+        self.assertEqual(d.judgement_warnings("de", moves),
+                         ["::warning::identity takes (de): gained v | T -> tmdb:1 needs judgement"])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -370,7 +370,7 @@ def newest_recording(run_gh):
     return str(listed[0]["databaseId"]) if listed else None
 
 
-def main(argv, run_gh, files: Files):
+def _parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser()
     p.add_argument("--run", default="", help="the Record scrape fixtures run whose recording to report "
                                              "(default the newest completed one on main)")
@@ -386,20 +386,28 @@ def main(argv, run_gh, files: Files):
     p.add_argument("--dry-run", action="store_true", help="print the bodies' verdicts, touch no issue")
     p.add_argument("--countries-disagree", metavar="DIR",
                    help="the local prod mirror's light export (countries_disagree.py --mirror): add the section")
-    a = p.parse_args(argv)
+    return p
+
+
+def _report_run(a: argparse.Namespace, today: datetime.date, run_gh: Any, files: Files) -> Tuple[bool, int, int]:
+    """(overdue, countries read, issues unwritten) of reporting run `a.run`'s findings."""
+    def directory_of(cc: str) -> str:
+        return os.path.join(a.diagnostics, cc) if a.diagnostics else download(a.run, cc, a.work, run_gh)
+    disagreeing = countries_disagree.read_found(files, a.countries_disagree, a.judgements) if a.countries_disagree else []
+    return report(files, [c for c in a.countries.split(",") if c], a.run, directory_of, a.judgements, today,
+                  a.max_age_days, f"{a.server}/{a.repo}/actions/runs/{a.run}", run_gh, a.assignee, a.dry_run,
+                  lambda cc: countries_disagree.section(disagreeing, cc))
+
+
+def main(argv, run_gh, files: Files):
+    a = _parser().parse_args(argv)
     a.run = a.run or newest_recording(run_gh)
     if not a.run:
         print("::error::no completed Record scrape fixtures run to report")
         return 2
     print(f"reporting the findings of recording run {a.run}")
     today = datetime.date.fromisoformat(a.today) if a.today else datetime.datetime.now(datetime.timezone.utc).date()
-    run_url = f"{a.server}/{a.repo}/actions/runs/{a.run}"
-    def directory_of(cc):
-        return os.path.join(a.diagnostics, cc) if a.diagnostics else download(a.run, cc, a.work, run_gh)
-    disagreeing = countries_disagree.read_found(files, a.countries_disagree, a.judgements) if a.countries_disagree else []
-    overdue, read, unwritten = report(files, [c for c in a.countries.split(",") if c], a.run, directory_of, a.judgements, today,
-                           a.max_age_days, run_url, run_gh, a.assignee, a.dry_run,
-                           lambda cc: countries_disagree.section(disagreeing, cc))
+    overdue, read, unwritten = _report_run(a, today, run_gh, files)
     if read == 0:
         print(f"::error::run {a.run} left no country's findings -- nothing was reported")
         return 2

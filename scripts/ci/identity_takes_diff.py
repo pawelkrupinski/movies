@@ -327,6 +327,12 @@ def _analyse(a: argparse.Namespace, files: Files) -> Tuple[Optional[int], Option
     return None, (moves, unpaired, len(head), suspects)
 
 
+def judgement_warnings(cc: str, moves: List[Dict[str, Any]]) -> List[str]:
+    """A workflow warning for each accepted move a judgement must decide."""
+    return [f"::warning::identity takes ({cc}): gained {m['venue']} | {m['rawTitle']} -> {m['new']} needs judgement"
+            for m in moves if m["judge"] and m["accepted"]]
+
+
 def main(argv, files: Files):
     a = _parse(argv)
     # Exit 2 for anything that is not a verdict -- an unreadable file, a row without its fields -- so it can never read as
@@ -342,9 +348,8 @@ def main(argv, files: Files):
     text, md, failing = render(a.cc, moves, unpaired, a.base_name, a.head_name, listings,
                                *(("identity final takes", "one capture") if a.final else ()), suspects=suspects)
     print(text)
-    for m in moves:
-        if m["judge"] and m["accepted"]:
-            print(f"::warning::identity takes ({a.cc}): gained {m['venue']} | {m['rawTitle']} -> {m['new']} needs judgement")
+    for warning in judgement_warnings(a.cc, moves):
+        print(warning)
     if a.summary:
         files.write_text(a.summary, files.read_text_or(a.summary, "") + md)
     return 1 if failing or (suspects and suspects["new"]) else 0

@@ -63,24 +63,34 @@ def parsed(message: str, repo: Optional[tool_git.GitRepo] = None) -> Set[Tuple[s
     return {(k.lower(), v) for k, v in repository(repo).parse_trailers(message)}
 
 
+def _candidates(lines: List[str], wanted: Set[str]) -> List[Tuple[int, "re.Match[str]"]]:
+    """(line number, match) of each line after the subject starting with one of the `wanted` keys."""
+    return [(i, m) for i, line in enumerate(lines[1:], start=2) if (m := KEY_LINE.match(line)) and m.group(2).lower() in wanted]
+
+
+def block_start(lines: List[str]) -> int:
+    """The line number the message's final paragraph (git's trailer block) starts at."""
+    nonblank = [i for i, line in enumerate(lines, start=1) if line.strip()]
+    return next((i + 1 for i in range(nonblank[-1] - 1, 0, -1) if not lines[i - 1].strip()), 1)
+
+
+def _unread(m: "re.Match[str]", number: int, start: int, read: Set[Tuple[str, str]]) -> bool:
+    """Whether git does not read the candidate line as the trailer it looks like: indented, above the final block, or
+    no trailer git read starts with its value (git unfolds a value continued on indented lines, so the line holds only
+    the read value's start)."""
+    key, value = m.group(2).lower(), m.group(3).strip()
+    return bool(m.group(1)) or number < start or not any(k == key and v.startswith(value) for k, v in read)
+
+
 def misplaced(message: str, keys: Iterable[str] = KNOWN_KEYS, repo: Optional[tool_git.GitRepo] = None) -> List[Misplaced]:
     """Each line of `message` (the subject aside) starting with one of `keys` that git does not read as a trailer."""
-    wanted = {k.lower() for k in keys}
     lines = message.splitlines()
-    candidates = [(i, m) for i, line in enumerate(lines[1:], start=2) if (m := KEY_LINE.match(line))
-                  and m.group(2).lower() in wanted]
+    candidates = _candidates(lines, {k.lower() for k in keys})
     if not candidates:
         return []
-    read = parsed(message, repo)
-    nonblank = [i for i, line in enumerate(lines, start=1) if line.strip()]
-    block_start = next((i + 1 for i in range(nonblank[-1] - 1, 0, -1) if not lines[i - 1].strip()), 1)
-    found: List[Misplaced] = []
-    for number, m in candidates:
-        key, value = m.group(2).lower(), m.group(3).strip()
-        # git unfolds a value continued on indented lines, so the line holds only the read value's start
-        if m.group(1) or number < block_start or not any(k == key and v.startswith(value) for k, v in read):
-            found.append(Misplaced(CANONICAL[key], number, lines[number - 1].strip()))
-    return found
+    read, start = parsed(message, repo), block_start(lines)
+    return [Misplaced(CANONICAL[m.group(2).lower()], number, lines[number - 1].strip())
+            for number, m in candidates if _unread(m, number, start, read)]
 
 
 def explain(m: Misplaced) -> str:
@@ -175,10 +185,14 @@ def lint(ranges: List[str], repo: tool_git.GitRepo) -> List[str]:
     return out
 
 
+def lint_arguments(argv: List[str]) -> bool:
+    """Whether `argv` is `lint` and one or more `--range A..B` pairs."""
+    return bool(argv) and argv[0] == "lint" and len(argv) >= 3 and not len(argv[1:]) % 2 and all(a == "--range" for a in argv[1::2])
+
+
 def main(argv: List[str]) -> int:
-    usage = "usage: trailers.py lint --range A..B [--range ...]"
-    if not argv or argv[0] != "lint" or len(argv) < 3 or len(argv[1:]) % 2 or any(a != "--range" for a in argv[1::2]):
-        print(usage, file=sys.stderr)
+    if not lint_arguments(argv):
+        print("usage: trailers.py lint --range A..B [--range ...]", file=sys.stderr)
         return 2
     try:
         for warning in lint(argv[2::2], tool_git.SubprocessGitRepo.here()):

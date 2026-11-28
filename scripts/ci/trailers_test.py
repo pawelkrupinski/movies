@@ -182,5 +182,16 @@ class RangeReadingsTest(unittest.TestCase):
 
 
 
+class PiecesTest(unittest.TestCase):
+    def test_the_final_paragraph_starts_after_the_last_blank_line(self):
+        self.assertEqual(trailers.block_start(["subject", "", "body", "", "A: b", "C: d"]), 5)
+        self.assertEqual(trailers.block_start(["subject"]), 1)
+
+    def test_lint_takes_one_or_more_range_pairs(self):
+        self.assertTrue(trailers.lint_arguments(["lint", "--range", "a..b", "--range", "c..d"]))
+        for argv in ([], ["lint"], ["lint", "--range"], ["lint", "--other", "a..b"], ["check", "--range", "a..b"]):
+            self.assertFalse(trailers.lint_arguments(argv), argv)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -78,7 +78,6 @@ cognitive	scripts/ci/gating_checks.py:yaml_jobs	19
 cognitive	scripts/ci/harness_aa.py:main	11
 cognitive	scripts/ci/identity_judgements_lint.py:served_findings	19
 cognitive	scripts/ci/identity_run_shards.py:plan	16
-cognitive	scripts/ci/identity_takes_diff.py:main	11
 cognitive	scripts/ci/identity_takes_diff.py:pair	12
 cognitive	scripts/ci/identity_takes_diff.py:suspects_of	13
 cognitive	scripts/ci/python_floor_lint.py:newer_fstrings	17
@@ -198,9 +197,7 @@ cyclomatic	scripts/ci/gating_checks.py:report_only	14
 cyclomatic	scripts/ci/gating_checks.py:sync	12
 cyclomatic	scripts/ci/gating_checks.py:yaml_jobs	14
 cyclomatic	scripts/ci/harness_aa.py:main	11
-cyclomatic	scripts/ci/identity_findings_report.py:main	11
 cyclomatic	scripts/ci/identity_run_shards.py:plan	13
-cyclomatic	scripts/ci/identity_takes_diff.py:main	11
 cyclomatic	scripts/ci/lint_per_file_check.py:main	11
 cyclomatic	scripts/ci/lint_per_file_check.py:pairs	11
 cyclomatic	scripts/ci/python_floor_lint.py:findings_in	16
@@ -214,8 +211,6 @@ cyclomatic	scripts/ci/runner_scheduler.py:decide.borrow_check	19
 cyclomatic	scripts/ci/runner_scheduler.py:decide.room_for	13
 cyclomatic	scripts/ci/runner_scheduler.py:read_readings	24
 cyclomatic	scripts/ci/runner_scheduler.py:tick	18
-cyclomatic	scripts/ci/trailers.py:main	11
-cyclomatic	scripts/ci/trailers.py:misplaced	16
 cyclomatic	scripts/ci/upstream_run.py:main	11
 cyclomatic	scripts/ci_status.py:run_lines	13
 cyclomatic	scripts/ci_status.py:workflow_lines	11
@@ -320,7 +315,7 @@ pyright	scripts/ci/family_reach.py	15
 pyright	scripts/ci/family_shards.py	9
 pyright	scripts/ci/harness_aa.py	14
 pyright	scripts/ci/hotspots.py	19
-pyright	scripts/ci/identity_findings_report.py	98
+pyright	scripts/ci/identity_findings_report.py	96
 pyright	scripts/ci/identity_judgements_lint.py	69
 pyright	scripts/ci/identity_live_drift.py	29
 pyright	scripts/ci/identity_run_shards.py	7
