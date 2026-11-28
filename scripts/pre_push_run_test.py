@@ -30,7 +30,8 @@ SELECTING = {
     "scripttests": "data/a.tsv", "actionlint": ".github/workflows/x.yml", "shellcheck": "scripts/x.sh",
     "sbt": "Dockerfile", "flipbacklog": "test/resources/fixtures/drift-gate-seeds.tsv",
     "stampcarry": "test/resources/identity-stamp-carry.tsv", "identity": "identity/src/main/scala/A.scala",
-    "driftguards": "worker/src/main/scala/A.scala", "ios": "ios/A.swift"}
+    "driftguards": "worker/src/main/scala/A.scala", "ios": "ios/A.swift",
+    "mobilequality": "test/resources/kotlin-quality-baseline.tsv", "shellgate": "test/resources/shell-keeps.tsv"}
 SECONDS = r"\(\d+s\)"
 # what the hook needs on a PATH that lacks one tool (the missing-tool case): every other one it runs, linked in
 BASE_TOOLS = ("git bash sh env python3 sed awk grep cat tr cut sort head tail wc mktemp dirname rm mkdir mv date find "
@@ -45,7 +46,7 @@ class ListTest(PushCase):
 
     def test_a_range_runs_what_its_paths_select(self):
         head = self.change("docs and ios", {"docs/a.md": "x", "ios/A.swift": "x"})
-        self.assertEqual(["ios"], self.listed("--range", f"{self.base}..{head}"))
+        self.assertEqual(["mobilequality", "ios"], self.listed("--range", f"{self.base}..{head}"))
 
     def test_nothing_selected_nothing_listed(self):
         head = self.change("docs", {"docs/a.md": "x"})
@@ -84,9 +85,9 @@ class ListTest(PushCase):
         head = self.change("tools", {"scripts/x.sh": "#!/bin/sh\n", "ios/A.swift": "x"})
         done = self.hook("--checks-only", f"{self.base}..{head}", env={"PREPUSH_LIST": "1", "PREPUSH_ONLY": "sbt ios"})
         self.assertEqual(["sbt", "ios"], lines(done.stdout), done.output)
-        self.assertIn("left to the landing check's other job(s): scripttests shellcheck", done.stderr)
+        self.assertIn("left to the landing check's other job(s): mobilequality shellgate scripttests shellcheck", done.stderr)
         done = self.hook("--checks-only", f"{self.base}..{head}", env={"PREPUSH_LIST": "1", "PREPUSH_ELSEWHERE": "sbt"})
-        self.assertEqual(["scripttests", "shellcheck", "ios"], lines(done.stdout), done.output)
+        self.assertEqual(["mobilequality", "shellgate", "scripttests", "shellcheck", "ios"], lines(done.stdout), done.output)
 
 
 class GateTest(PushCase):
@@ -387,7 +388,7 @@ class StdinTest(PushCase):
         head = self.change("ios", {"ios/A.swift": "x"})
         done = self.hook("origin", "url", stdin=f"refs/heads/main {head} refs/heads/main {self.base}\n",
                          env={"PREPUSH_LIST": "1", "PREPUSH_SKIP": "redgate"})
-        self.assertEqual((0, ["ios"]), (done.code, lines(done.stdout)), done.output)
+        self.assertEqual((0, ["mobilequality", "ios"]), (done.code, lines(done.stdout)), done.output)
 
 
 if __name__ == "__main__":

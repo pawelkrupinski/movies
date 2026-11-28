@@ -47,9 +47,10 @@ class PlanTest(PlanCase):
         self.assertPlans(["sbt"], ["web/src/main/twirl/a.scala.html"])
 
     def test_the_shell_tools_by_shebang(self):
-        self.assertPlans(["scripttests", "shellcheck", "sbt"], ["scripts/a-tool"])
-        self.assertPlans(["pyquality", "scripttests", "sbt"], ["scripts/a-python-tool"])
-        self.assertPlans(["scripttests", "sbt"], ["scripts/a-data-file"])
+        # the shell gate reads every extension-less tool: a shell one, or one migrated from shell (its rows gone)
+        self.assertPlans(["shellgate", "scripttests", "shellcheck", "sbt"], ["scripts/a-tool"])
+        self.assertPlans(["pyquality", "shellgate", "scripttests", "sbt"], ["scripts/a-python-tool"])
+        self.assertPlans(["shellgate", "scripttests", "sbt"], ["scripts/a-data-file"])
         self.assertPlans(["pyquality", "scripttests", "sbt"], ["scripts/x.py"])
         self.assertPlans(["scripttests", "sbt"], ["scripts/x_test.py"])  # a self-test is reported, never held
 
@@ -64,7 +65,7 @@ class PlanTest(PlanCase):
         self.assertPlans(["schedules"], ["infra/nix/files/scheduled-workflows.json"])
 
     def test_the_hook_itself(self):
-        self.assertPlans(["newchecks", "scripttests", "shellcheck", "sbt"], ["scripts/hooks/pre-push"])
+        self.assertPlans(["newchecks", "shellgate", "scripttests", "shellcheck", "sbt"], ["scripts/hooks/pre-push"])
 
     def test_a_registry_file_alone_runs_the_sbt_check(self):
         self.assertPlans(["sbt"], ["Dockerfile"])
@@ -86,18 +87,18 @@ class PlanTest(PlanCase):
         self.assertPlans(["stampcarry"], ["test/resources/identity-stamp-carry.tsv"])
 
     def test_the_generated_rosters_and_the_snapshot(self):
-        self.assertPlans(["drift"], ["android/app/src/main/java/pl/kinowo/model/City.kt"])
+        self.assertPlans(["mobilequality", "drift"], ["android/app/src/main/java/pl/kinowo/model/City.kt"])
         self.assertPlans(["drift", "scripttests"], ["data/x.tsv"])
         self.assertPlans(["snapshot"], ["test/resources/fixtures/08-06-2026/a.json"])
 
     def test_the_monitoring(self):
         self.assertPlans(["dashboards", "sbt"], ["infra/nix/files/monitoring/grafana/dashboards/a.json"])
         self.assertPlans(["dashboards", "metricalerts"], ["infra/nix/files/monitoring/rules/a.rules"])
-        self.assertPlans(["metricalerts", "shellcheck", "sbt"], ["infra/nix/files/exporter.sh"])
-        self.assertPlans(["shellcheck", "sbt"], ["infra/nix/files/quiet.sh"])
+        self.assertPlans(["shellgate", "metricalerts", "shellcheck", "sbt"], ["infra/nix/files/exporter.sh"])
+        self.assertPlans(["shellgate", "shellcheck", "sbt"], ["infra/nix/files/quiet.sh"])
 
     def test_ios(self):
-        self.assertPlans(["ios"], ["ios/Kinowo/A.swift"])
+        self.assertPlans(["mobilequality", "ios"], ["ios/Kinowo/A.swift"])
 
     def test_the_allow_lists(self):
         self.assertPlans(["allowlists", "sbt"], [".github/allow-lists.txt"])
@@ -110,8 +111,8 @@ class PlanTest(PlanCase):
         self.assertPlans(["scripttests"], ["docs/read-by-a-test.md"])
 
     def test_several_paths_select_each_check_once_in_run_order(self):
-        self.assertPlans(["judgements", "newchecks", "schedules", "driftguards", "eslint", "jsquality", "scripttests",
-                          "actionlint", "shellcheck", "sbt", "identity", "ios"],
+        self.assertPlans(["judgements", "newchecks", "schedules", "driftguards", "eslint", "jsquality", "mobilequality",
+                          "shellgate", "scripttests", "actionlint", "shellcheck", "sbt", "identity", "ios"],
                          ["ios/A.swift", "web/src/main/assets/js/a.js", "scripts/a-tool", ".github/workflows/x.yml",
                           "test/resources/fixtures/identity-judgements.tsv"])
 
@@ -349,7 +350,7 @@ class NotAPlanModeTest(PlanCase):
     def test_plan_from_a_subdirectory(self):
         done = self.run_tool("--plan", cwd=self.path("repo", "scripts"), stdin="ios/A.swift\n",
                              tool=self.path("repo", "scripts", "hooks", "pre-push"))
-        self.assertEqual(["ios"], lines(done.stdout))
+        self.assertEqual(["mobilequality", "ios"], lines(done.stdout))
 
 
 

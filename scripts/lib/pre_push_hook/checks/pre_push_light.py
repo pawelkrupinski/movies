@@ -431,6 +431,9 @@ def mobilequality(c: Check) -> int:
     # checkout (~/.cache/kinowo-python-venvs); a venv that cannot be built fails the check with its fix (BLOCKS)
     if not c.need("mobilequality", "python3", PYTHON_FIX):
         return 1
+    if not c.holds("-x", "scripts/mobile-quality-report"):
+        c.say.warn("mobilequality: this tree has no scripts/mobile-quality-report: nothing to measure")
+        return 0
     return int(c.run(["scripts/mobile-quality-report", "--check", *c.range_args()], out=STDERR) != 0)
 
 
