@@ -9,7 +9,7 @@ import pathlib
 import re
 import subprocess
 import sys
-import time
+from applier_clock import sleep
 from applier_closure import CURRENT_SYSTEM, SYSTEM_PROFILE, failed_units
 from applier_process import LockContended, SwitchFailed, Undetermined, run
 
@@ -126,7 +126,7 @@ def logind_retry_note(output: str) -> str:
 
 def wait_out_logind_race(output: str) -> None:
     print(logind_retry_note(output), file=sys.stderr)
-    time.sleep(LOGIND_RACE_RETRY_DELAY_SECONDS)
+    sleep(LOGIND_RACE_RETRY_DELAY_SECONDS)
 
 
 def run_switch(candidate: pathlib.Path) -> tuple[int, str]:
@@ -161,7 +161,7 @@ def check_switch(candidate: pathlib.Path, returncode: int, output: str) -> None:
 
 
 def failures_after_settling(before: set[str]) -> set[str]:
-    time.sleep(5)  # systemd settles; a unit that fails on activation does so within seconds
+    sleep(5)  # systemd settles; a unit that fails on activation does so within seconds
     return failed_units() - before
 
 

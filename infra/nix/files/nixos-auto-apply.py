@@ -108,12 +108,12 @@ import fcntl
 import os
 import pathlib
 import sys
-import time
 
 # The pieces beside it. Run as a script, this file's own directory leads sys.path and `nixos_auto_apply/` is
 # found from it; fleet/auto-apply.nix swaps this one line for the store copy of that directory, because the
 # built script lives in the store and its siblings do not.
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), "nixos_auto_apply"))
+from applier_clock import now  # noqa: E402
 from applier_decide import classify_and_apply  # noqa: E402
 from applier_metrics import Metrics, publish  # noqa: E402
 from applier_verdict import Verdict, exit_code, failure_verdict, undetermined, verdict_message  # noqa: E402
@@ -164,7 +164,7 @@ def pass_verdict(args: argparse.Namespace, metrics: Metrics) -> Verdict:
 
 
 def seconds_held(lock_path: pathlib.Path) -> int:
-    return int(time.time() - lock_path.stat().st_mtime)
+    return int(now() - lock_path.stat().st_mtime)
 
 
 def locked_pass(args: argparse.Namespace, metrics: Metrics) -> Verdict:
@@ -193,7 +193,7 @@ def locked_pass(args: argparse.Namespace, metrics: Metrics) -> Verdict:
 def main() -> int:
     args = parse_args()
     metrics = Metrics(pathlib.Path(args.metrics_file), args.host)
-    started = int(time.time())
+    started = int(now())
     verdict = locked_pass(args, metrics)
     publish(metrics, verdict, started)
     print(verdict_message(verdict), file=sys.stderr if verdict.state != "applied" else sys.stdout)

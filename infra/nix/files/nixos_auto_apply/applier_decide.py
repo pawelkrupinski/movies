@@ -6,8 +6,8 @@ from __future__ import annotations
 import argparse
 import os
 import pathlib
-import time
 from applier_classify import DryActivate
+from applier_clock import now
 from applier_closure import (
     BootChain, CURRENT_SYSTEM, UnitChanges, boot_chain, configuration_revision, inactive_units,
     staged_system, unit_changes, unit_tree
@@ -160,7 +160,7 @@ def applied_detail(forgiven: tuple[str, ...]) -> str:
 
 
 def record_deployment(metrics: Metrics) -> None:
-    metrics.gauge("nixos_auto_apply_last_deployment_timestamp_seconds", int(time.time()),
+    metrics.gauge("nixos_auto_apply_last_deployment_timestamp_seconds", int(now()),
                   help_text="When this host last actually switched to a new closure.")
 
 

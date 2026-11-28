@@ -92,8 +92,10 @@ effect	infra/nix/bin/convert_host.py:files	1
 effect	infra/nix/files/identity-regressions.py	1
 effect	infra/nix/files/identity-regressions.py:files	4
 effect	infra/nix/files/identity-regressions.py:network	1
-effect	infra/nix/files/nixos-auto-apply.py	2
-effect	infra/nix/files/nixos-auto-apply.py:files	4
+effect	infra/nix/files/nixos-auto-apply.py:files	1
+effect	infra/nix/files/nixos_auto_apply/applier_metrics.py:files	2
+effect	infra/nix/files/nixos_auto_apply/applier_process.py	1
+effect	infra/nix/files/nixos_auto_apply/applier_switch.py:files	1
 effect	infra/nix/files/scheduled_dispatch.py	3
 effect	infra/nix/files/scheduled_dispatch.py:files	5
 effect	infra/nix/files/scheduled_dispatch.py:network	2
