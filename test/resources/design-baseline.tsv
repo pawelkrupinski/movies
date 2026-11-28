@@ -620,9 +620,6 @@ mixed	infra/bin/check_steps.py:run_script	6
 mixed	infra/bin/cloudflare_ci_edge_allow.py:Zones.api	5
 mixed	infra/bin/cloudflare_ci_edge_allow.py:apply	6
 mixed	infra/bin/cloudflare_ci_edge_allow.py:run	4
-mixed	infra/bin/deploy:deploy	31
-mixed	infra/bin/deploy:probe_until_answered	3
-mixed	infra/bin/deploy:run	9
 mixed	infra/bin/fleet-ssh:install_ssh_config	7
 mixed	infra/bin/fleet-ssh:write_ssh_config	8
 mixed	infra/bin/fleet_hosts.py:Flake._run	5

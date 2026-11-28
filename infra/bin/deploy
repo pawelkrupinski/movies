@@ -43,30 +43,37 @@ import shlex
 import subprocess
 import sys
 import time
-import typing
+from typing import Callable, List, NamedTuple, Optional, Sequence, Set, Tuple
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import nix_path  # noqa: E402  (beside this tool)
+# The decisions, the parsers and the host's scripts live in the deploy_* modules beside this tool; they are named here
+# too, so `deploy` stays the one place its tests and its callers look one up.
+from deploy_decide import (BOOT_CHAIN, Refused, SwitchOutcome, Unmeasured, boot_changes, choose_candidate,  # noqa: E402
+                           choose_target, staleness_verdict, switch_ended, switch_problem, unit_ok, verify_verdict)
+from deploy_parse import (Facts, Preview, parse_dry_activate, parse_probe, parse_switch_status,  # noqa: E402
+                          render_preview, unit_fields, watched_units)
+from deploy_scripts import LAUNCH, PROBE, SWITCH_STATUS, SWITCH_UNIT, VERIFY_STATES  # noqa: E402
+
+__all__ = ["BOOT_CHAIN", "LAUNCH", "PROBE", "SWITCH_STATUS", "SWITCH_UNIT", "VERIFY_STATES", "Preview", "Refused",
+           "SwitchOutcome", "Unmeasured", "boot_changes", "choose_candidate", "choose_target", "main",
+           "parse_dry_activate", "parse_probe", "parse_switch_status", "render_preview", "staleness_verdict",
+           "switch_problem", "unit_ok", "verify_verdict"]
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PIN = "/var/lib/nixdeploy/staged-system"
 PROFILE = "/nix/var/nix/profiles/system"
-BOOT_CHAIN = ("kernel", "initrd", "kernel-modules", "systemd")
 END = "@@ END"
 
 
-class Refused(Exception):
-    """A deploy that must not go ahead. Exit 1."""
+def _spawn(argv: Sequence[str], cwd: str, stdin: Optional[str], timeout: float, capture: bool) -> "subprocess.CompletedProcess[str]":
+    return subprocess.run(argv, cwd=cwd, input=stdin, text=True, timeout=timeout, capture_output=capture)
 
 
-class Unmeasured(Exception):
-    """Something could not be read. Exit 2 -- never the same as "nothing to do"."""
-
-
-def run(argv, *, cwd=REPO, check=True, stdin=None, timeout=3600, capture=True):
+def run(argv: Sequence[str], *, cwd: str = REPO, check: bool = True, stdin: Optional[str] = None, timeout: float = 3600,
+        capture: bool = True) -> "subprocess.CompletedProcess[str]":
     try:
-        done = subprocess.run(argv, cwd=cwd, input=stdin, text=True, timeout=timeout,
-                              capture_output=capture)
+        done = _spawn(argv, cwd, stdin, timeout, capture)
     except FileNotFoundError as exc:
         raise Unmeasured(f"{argv[0]} is not on PATH") from exc
     except subprocess.TimeoutExpired as exc:
@@ -78,24 +85,21 @@ def run(argv, *, cwd=REPO, check=True, stdin=None, timeout=3600, capture=True):
     return done
 
 
+def _ssh_user() -> str:
+    return os.environ.get("SSH_USER", "")
+
+
+def _sleep(seconds: float) -> None:
+    time.sleep(seconds)
+
+
+def _now() -> float:
+    return time.time()
+
+
 # -------------------------------------------------------------------------------------------------
 # The checkout
 # -------------------------------------------------------------------------------------------------
-
-def staleness_verdict(behind: int, ahead: int, dirty: bool) -> tuple[bool, str]:
-    """(ok, message). Behind main is refused: deploying it rolls the host back. Ahead (an unpushed
-    fix being tried) and dirty are allowed and SAID, because the revision on the host will say so."""
-    if behind > 0:
-        return False, (f"this checkout is {behind} commit(s) behind origin main: deploying it would "
-                       "roll the host back. `git pull --ff-only origin main` first "
-                       "(or --allow-stale for a deliberate rollback).")
-    notes = []
-    if ahead:
-        notes.append(f"{ahead} commit(s) ahead of origin main (not pushed)")
-    if dirty:
-        notes.append("uncommitted changes (the revision will be a -dirty one)")
-    return True, "checkout: " + ("; ".join(notes) if notes else "at origin main")
-
 
 def check_checkout(allow_stale: bool) -> str:
     if run(["git", "fetch", "-q", "origin", "main"], check=False, timeout=300).returncode != 0:
@@ -123,29 +127,25 @@ def flake_ref() -> str:
     return f"git+file://{top}?{query}"
 
 
-def nix_eval(flake: str, attr: str, raw=True) -> str:
+def nix_eval(flake: str, attr: str, raw: bool = True) -> str:
     return run(["nix", "eval"] + (["--raw"] if raw else ["--json"])
                + [f"{flake}#nixosConfigurations.{attr}"], timeout=900).stdout.strip()
+
+
+def same_flake_tree(rev: str) -> bool:
+    """Whether `rev` and HEAD (clean) have the same files under this flake's directory."""
+    if not re.fullmatch(r"[0-9a-f]{40}", rev or ""):
+        return False
+    if run(["git", "cat-file", "-e", f"{rev}^{{commit}}"], check=False).returncode != 0:
+        return False
+    if run(["git", "status", "--porcelain", "--untracked-files=no", "."]).stdout.strip():
+        return False
+    return run(["git", "diff", "--quiet", rev, "HEAD", "--", "."], check=False).returncode == 0
 
 
 # -------------------------------------------------------------------------------------------------
 # Reaching the host
 # -------------------------------------------------------------------------------------------------
-
-def choose_target(host: str, address: str, ssh_g_hostname: str, ssh_user: str = "") -> str:
-    """How to ssh to `host`. An alias NAMED LIKE THE HOST wins (`ssh -G` resolves it to some other
-    hostname), because a bare IP can bind a restricted key (monitoring-1, borg-ovh-1). An alias that
-    points somewhere OTHER than the flake's address is refused: the IP moved and the alias did not,
-    so it would reach whatever machine holds the old address now."""
-    if ssh_g_hostname and ssh_g_hostname != host:
-        if address and ssh_g_hostname != address:
-            raise Refused(f"ssh alias {host} points at {ssh_g_hostname} but the flake says {host} is "
-                          f"{address}; fix ~/.ssh/config before deploying")
-        return f"{ssh_user}@{host}" if ssh_user else host
-    if not address:
-        raise Unmeasured(f"no ssh alias {host} and the flake gives it no address")
-    return f"{ssh_user}@{address}" if ssh_user else address
-
 
 def ssh_g_hostname(host: str) -> str:
     out = run(["ssh", "-G", host], check=False).stdout
@@ -162,7 +162,7 @@ SSH_OPTS = ("-o", "BatchMode=yes", "-o", "ConnectTimeout=15",
             "-o", "ControlMaster=auto", "-o", "ControlPersist=10m", "-o", "ControlPath=~/.ssh/deploy-%C")
 
 
-def remote(target: str, script: str, args=(), timeout=3600) -> str:
+def remote(target: str, script: str, args: Sequence[str] = (), timeout: float = 3600) -> str:
     """Run a bash script on the host. The reply must END with the marker, or it was not the host's
     shell that answered (a forced command, a banner, a dropped connection)."""
     argv = ["ssh", *SSH_OPTS, target, "bash -s -- " + " ".join(shlex.quote(a) for a in args)]
@@ -173,338 +173,28 @@ def remote(target: str, script: str, args=(), timeout=3600) -> str:
     return out
 
 
-PROBE = r"""
-set -u
-cand="${1:-}"
-SUDO=""; [ "$(id -u)" -eq 0 ] || SUDO="sudo -n"
-echo "user=$(id -un)"
-echo "hostname=$(hostname)"
-echo "running=$(readlink -f /run/current-system)"
-echo "booted=$(readlink -f /run/booted-system)"
-echo "pinned=$(readlink -f /var/lib/nixdeploy/staged-system 2>/dev/null || true)"
-rev() { [ -x "$1/sw/bin/nixos-version" ] && "$1/sw/bin/nixos-version" --json 2>/dev/null \
-  | sed -n 's/.*"configurationRevision":"\([^"]*\)".*/\1/p'; }
-echo "running_rev=$(rev /run/current-system)"
-pin=$(readlink -f /var/lib/nixdeploy/staged-system 2>/dev/null || true)
-[ -n "$pin" ] && echo "pinned_rev=$(rev "$pin")"
-echo "failed=$(systemctl list-units --state=failed --no-legend --plain --no-pager 2>/dev/null | awk '{print $1}' | tr '\n' ' ')"
-if [ -n "$cand" ] && [ -x "$cand/bin/switch-to-configuration" ]; then
-  echo "candidate_present=1"
-  echo "candidate_rev=$(rev "$cand")"
-  for c in kernel initrd kernel-modules systemd; do
-    a=$(readlink -f "/run/booted-system/$c" 2>/dev/null); b=$(readlink -f "$cand/$c" 2>/dev/null)
-    [ "$a" = "$b" ] && echo "boot_$c=same" || echo "boot_$c=differs"
-  done
-  if [ "$(readlink -f /run/current-system)" != "$cand" ]; then
-    # Top-level unit files whose target differs: what dry-activate does NOT mention because the unit
-    # is idle (it picks the new definition up at its next start).
-    new=$cand/etc/systemd/system; old=/run/current-system/etc/systemd/system
-    for f in $( (ls "$new"; ls "$old") 2>/dev/null | sort -u); do
-      [ "$(readlink "$new/$f")" = "$(readlink "$old/$f")" ] || echo "unitfile $f"
-    done
-    out=$($SUDO "$cand/bin/switch-to-configuration" dry-activate 2>&1); rc=$?
-    echo "@@ DRY rc=$rc"
-    printf '%s\n' "$out"
-    echo "@@ DRYEND"
-    for u in $(printf '%s\n' "$out" | sed -n 's/^would [a-zA-Z ]*units: //p' | tr ',' ' '); do
-      echo "state $u $(systemctl show -p ActiveState --value "$u" 2>/dev/null)"
-    done
-  fi
-else
-  echo "candidate_present=0"
-fi
-echo "@@ END"
-"""
-
-# The switch, as its own transient unit's script: $1 the candidate, $2 the file its exit status goes
-# to. PROFILE BEFORE SWITCH, the order nixos-auto-apply and nixos-rebuild use: the bootloader menu is
-# built from the profile, so the other order boots the old generation at the next reboot. The unit
-# gets systemd's PATH, not the login shell's /run/current-system/sw/bin, so nix-env is named by the
-# candidate's own path: a bare `nix-env` exited 127 and switched nothing (mongo-1, 2026-10-24).
-# THE APPLIER MAY HOLD THE LOCK: the pin LAUNCH writes wakes nixos-auto-apply, which takes
-# switch-to-configuration's lock while it judges the pin and lets go a second or so later. The switch
-# then exits 11, "Could not acquire lock" (mongo-1, 2026-10-24): wait that out, for a minute at most.
-# The status file is written last (renamed into place whole): its presence means the switch ENDED.
-# EVERY COMMAND BUT THE SHELL'S BUILTINS IS NAMED BY THE CANDIDATE'S PATH, sleep and mv too: that PATH
-# holds no coreutils, so a bare `mv` failed, no status file appeared, and a clean switch read as
-# "ended without an exit status (killed?)" (monitoring-1, 2026-11-10).
-SWITCH_UNIT = r"""set -u
-cand="$1"; status="$2"
-tries=0
-while :; do
-  "$cand/sw/bin/nix-env" --profile /nix/var/nix/profiles/system --set "$cand" \
-    && "$cand/bin/switch-to-configuration" switch
-  rc=$?
-  [ "$rc" -eq 11 ] && [ "$tries" -lt 20 ] || break
-  tries=$((tries + 1))
-  echo "· switch lock held (another activation); retrying in 3 s"
-  "$cand/sw/bin/sleep" 3
-done
-echo "$rc" > "$status.tmp" && "$cand/sw/bin/mv" -f "$status.tmp" "$status"
-exit "$rc"
-"""
-
-# Starts the switch DETACHED and returns at once: $1 the candidate, $2 the transient unit's name.
-# Nothing of the switch rides on this ssh session -- no --wait, no --pipe -- because the switch may
-# restart sshd, systemd-networkd and the rest under it: on monitoring-1 (2026-11-10) the session
-# streaming a `--wait --pipe` switch died mid "starting the following units: ...", the tool hung ~22
-# minutes and exited 2, while the host had switched fully. follow_switch reads the outcome afterwards.
-LAUNCH = r"""
-set -u
-# BIN_DEPLOY_DIR is the tests' override (ssh forwards no environment).
-cand="$1"; unit="$2"; dir="${BIN_DEPLOY_DIR:-/run/bin-deploy}"
-SUDO=""; [ "$(id -u)" -eq 0 ] || SUDO="sudo -n"
-[ -x "$cand/bin/switch-to-configuration" ] || { echo "!! $cand is not on this host"; echo "@@ END"; exit 5; }
-# THE PIN FIRST: nixos-auto-apply activates the pin whenever it is not running and is inert, so an
-# OLDER pin left behind would switch this host back. Writing it also wakes the applier, which may
-# hold the switch lock for a moment (SWITCH_UNIT's retry) and then finds the closure already running.
-if [ "$(readlink -f /var/lib/nixdeploy/staged-system 2>/dev/null)" != "$cand" ] && [ -d /var/lib/nixdeploy ]; then
-  $SUDO ln -sfn "$cand" /var/lib/nixdeploy/staged-system && echo "· pinned $cand"
-fi
-$SUDO mkdir -p "$dir"
-$SUDO tee "$dir/$unit.sh" >/dev/null <<'SWITCH_UNIT_EOF'
-""" + SWITCH_UNIT + r"""SWITCH_UNIT_EOF
-$SUDO systemd-run --quiet --collect --unit "$unit" --description "bin/deploy switch to $cand" \
-  -- /bin/sh "$dir/$unit.sh" "$cand" "$dir/$unit.status"
-echo "@@ LAUNCHED rc=$?"
-echo "@@ END"
-"""
-
-# Where the detached switch is: $1 the transient unit. Its status file once it ended, the unit's
-# state while it runs, the running closure, and the unit's whole journal (follow_switch prints the
-# lines it has not printed yet).
-SWITCH_STATUS = r"""
-set -u
-unit="$1"; dir="${BIN_DEPLOY_DIR:-/run/bin-deploy}"
-SUDO=""; [ "$(id -u)" -eq 0 ] || SUDO="sudo -n"
-echo "state=$(systemctl show -p ActiveState --value "$unit" 2>/dev/null)"
-[ -f "$dir/$unit.status" ] && echo "status=$(cat "$dir/$unit.status")"
-echo "now=$(readlink -f /run/current-system)"
-echo "@@ JOURNAL"
-$SUDO journalctl -q -u "$unit" -o cat --no-pager 2>/dev/null
-echo "@@ END"
-"""
-
-VERIFY_STATES = r"""
-set -u
-for u in "$@"; do
-  # One property per call, in the order unit_ok reads them: with several, `--value` prints them in
-  # systemd's own order (ActiveState, Type, Result), and a cleanly exited oneshot read as unhealthy.
-  echo "unit $u $(systemctl show -p ActiveState --value "$u" 2>/dev/null)" \
-    "$(systemctl show -p Result --value "$u" 2>/dev/null) $(systemctl show -p Type --value "$u" 2>/dev/null)"
-done
-echo "@@ END"
-"""
-
-
-def parse_probe(out: str) -> dict:
-    """key=value lines, plus `dry` (the dry-activate text), `dry_rc` and `states` {unit: state}."""
-    facts: dict = {"states": {}}
-    in_dry, dry = False, []
-    for line in out.splitlines():
-        if line.startswith("@@ DRY rc="):
-            facts["dry_rc"] = int(line.split("=", 1)[1])
-            in_dry = True
-        elif line == "@@ DRYEND":
-            in_dry = False
-        elif in_dry:
-            dry.append(line)
-        elif line.startswith("unitfile "):
-            facts.setdefault("unitfiles", []).append(line.split(" ", 1)[1])
-        elif line.startswith("state "):
-            parts = line.split()
-            facts["states"][parts[1]] = parts[2] if len(parts) > 2 else ""
-        elif "=" in line and not line.startswith("@@"):
-            key, value = line.split("=", 1)
-            facts[key] = value
-    if "dry_rc" in facts:
-        facts["dry"] = "\n".join(dry)
-    return facts
-
-
-# -------------------------------------------------------------------------------------------------
-# The preview
-# -------------------------------------------------------------------------------------------------
-
-UNIT_LINE = re.compile(
-    r"^would (NOT )?(start|stop|restart|reload) the following (changed )?(user )?units: (.+)$")
-NOISE = (
-    re.compile(r"^Not checking switch inhibitors"),
-    re.compile(r"^would activate the configuration\.\.\.$"),
-    re.compile(r"^sops-install-secrets: Imported "),
-)
-class Preview(typing.NamedTuple):
-    start: list
-    stop: list
-    restart: list
-    reload: list
-    skipped: list      # changed but NOT restarted (restartIfChanged = false)
-    user: list         # "kind unit" for user-manager units
-    other: list        # every other line: secrets, systemd re-exec, swap, anything unrecognised
-
-
-def parse_dry_activate(text: str) -> Preview:
-    p = Preview([], [], [], [], [], [], [])
-    for raw in text.splitlines():
-        line = raw.strip()
-        if not line or any(n.match(line) for n in NOISE):
-            continue
-        m = UNIT_LINE.match(line)
-        if not m:
-            p.other.append(line)
-            continue
-        negated, kind, _, user, units = m.groups()
-        names = [u.strip() for u in units.split(",") if u.strip()]
-        if user:
-            p.user.extend(f"{'skip' if negated else kind} {u}" for u in names)
-        elif negated:
-            p.skipped.extend(names)
-        else:
-            getattr(p, kind).extend(names)
-    return p
-
-
-def choose_candidate(expected: str, expected_present: bool, pinned: str, pinned_rev: str,
-                     same_tree: bool) -> tuple[str, str] | None:
-    """(closure, why) to deploy, or None when nothing suitable is on the host.
-
-    The closure this checkout evaluates to wins when it is there. Otherwise CI's PIN is used when it
-    was built from a commit whose flake tree is IDENTICAL to this checkout's: staging runs only for
-    commits that touch the flake's tree, and every other commit still changes `self.rev` -- so the
-    exact closure of HEAD is usually never staged, while the pin is the same configuration stamped
-    with the last commit that changed it."""
-    if expected_present:
-        return expected, "this checkout's closure"
-    if pinned and pinned_rev and same_tree:
-        return pinned, f"CI's staged closure, built from {pinned_rev[:12]} (same flake tree as HEAD)"
-    return None
-
-
-def same_flake_tree(rev: str) -> bool:
-    """Whether `rev` and HEAD (clean) have the same files under this flake's directory."""
-    if not re.fullmatch(r"[0-9a-f]{40}", rev or ""):
-        return False
-    if run(["git", "cat-file", "-e", f"{rev}^{{commit}}"], check=False).returncode != 0:
-        return False
-    if run(["git", "status", "--porcelain", "--untracked-files=no", "."]).stdout.strip():
-        return False
-    return run(["git", "diff", "--quiet", rev, "HEAD", "--", "."], check=False).returncode == 0
-
-
-def boot_changes(facts: dict) -> list:
-    return [c for c in BOOT_CHAIN if facts.get(f"boot_{c}") == "differs"]
-
-
-def render_preview(host: str, target: str, facts: dict, preview: Preview | None,
-                   candidate: str, expected_rev: str, checkout: str, via: str) -> str:
-    states = facts.get("states", {})
-
-    def names(units):
-        return ", ".join(f"{u} ({states[u]})" if states.get(u) else u for u in units) or "-"
-
-    out = [f"== {host}  via ssh {target}  ({via})", f"   {checkout}",
-           f"   running   {facts.get('running', '?')}  rev {facts.get('running_rev') or '?'}",
-           f"   candidate {candidate}  rev {expected_rev or 'none (unstamped rsync build)'}"]
-    pinned = facts.get("pinned")
-    if pinned and pinned != candidate:
-        out.append(f"   pinned    {pinned}  (CI's pin differs; --apply re-pins to the candidate)")
-    if facts.get("running") == candidate:
-        out.append("   NOTHING TO DO: the host already runs this closure.")
-        return "\n".join(out)
-    if preview is None:
-        out.append("   (no dry-activate: the candidate is not on the host)")
-        return "\n".join(out)
-    # switch-to-configuration restarts some units as stop + start; say so once, as a restart.
-    both = [u for u in preview.stop if u in preview.start]
-    out += [
-        f"   start     {names([u for u in preview.start if u not in both])}",
-        f"   stop      {names([u for u in preview.stop if u not in both])}",
-        f"   restart   {names(preview.restart + [u + ' [stop+start]' for u in both])}",
-        f"   reload    {names(preview.reload)}",
-        f"   changed, NOT restarted  {names(preview.skipped)}",
-    ]
-    acted = set(preview.start + preview.stop + preview.restart + preview.reload + preview.skipped)
-    idle = [f for f in facts.get("unitfiles", []) if f not in acted and not f.endswith(
-        (".wants", ".requires", ".upholds", ".d"))]
-    if idle:
-        out.append(f"   unit files changed, unit idle  {', '.join(idle)}  (used at its next start)")
-    if preview.user:
-        out.append(f"   user units {', '.join(preview.user)}")
-    for line in preview.other:
-        out.append(f"   note      {line}")
-    boot = boot_changes(facts)
-    out.append("   boot chain " + (f"CHANGES {', '.join(boot)} -> a REBOOT is needed to use it "
-                                   "(bin/rolling-reboot where present)" if boot
-                                   else "unchanged (no reboot needed)"))
-    if facts.get("failed", "").strip():
-        out.append(f"   already failed before the switch: {facts['failed'].strip()}")
-    return "\n".join(out)
-
-
-# -------------------------------------------------------------------------------------------------
-# Verifying
-# -------------------------------------------------------------------------------------------------
-
-def unit_ok(fields: list) -> bool:
-    """ActiveState, Result, Type -> healthy? A oneshot that ran and exited is `inactive`+`success`."""
-    active, result, kind = (fields + ["", "", ""])[:3]
-    if active in ("active", "activating", "reloading"):
-        return True
-    return kind == "oneshot" and active == "inactive" and result == "success"
-
-
-def verify_verdict(candidate: str, now: str, expected_rev: str, running_rev: str,
-                   failed_before: set, failed_after: set, unit_fields: dict) -> list:
-    """Problems, empty when the host runs the candidate, at the expected revision, with no unit
-    newly failed and every started/restarted unit healthy."""
-    problems = []
-    if now != candidate:
-        problems.append(f"/run/current-system is {now}, not {candidate}")
-    if expected_rev and running_rev != expected_rev:
-        problems.append(f"running revision is {running_rev or 'unknown'}, expected {expected_rev}")
-    new_failed = sorted(failed_after - failed_before)
-    if new_failed:
-        problems.append(f"newly failed units: {', '.join(new_failed)}")
-    bad = sorted(u for u, f in unit_fields.items() if not unit_ok(f))
-    if bad:
-        problems.append("not active after the switch: "
-                        + ", ".join(f"{u} ({' '.join(unit_fields[u]) or '?'})" for u in bad))
-    return problems
-
-
 # -------------------------------------------------------------------------------------------------
 # Switching, detached from the session
 # -------------------------------------------------------------------------------------------------
 
-def parse_switch_status(out: str) -> dict:
-    """SWITCH_STATUS's reply: `state`, `now`, `status` (an int, absent while the switch runs) and
-    `journal` (its lines)."""
-    facts: dict = {"journal": []}
-    in_journal = False
-    for line in out.splitlines():
-        if line == "@@ JOURNAL":
-            in_journal = True
-        elif line.startswith("@@"):
-            in_journal = False
-        elif in_journal:
-            facts["journal"].append(line)
-        elif "=" in line:
-            key, value = line.split("=", 1)
-            facts[key] = value
-    if re.fullmatch(r"-?\d+", facts.get("status", "")):
-        facts["status"] = int(facts["status"])
-    else:
-        facts.pop("status", None)
-    return facts
+def _note_unreachable(exc: Unmeasured, target: str, unit: str, elapsed: float, silent_for: float,
+                      unreachable: float, every: float) -> None:
+    """Say the host did not answer, or give up when it has not for `unreachable` seconds in a row."""
+    if silent_for > unreachable:
+        raise Unmeasured(f"{target} unreachable for over {unreachable}s while {unit} ran "
+                         f"(last: {exc})") from exc
+    print(f"   · [{elapsed:5.0f}s] {target} not answering ({str(exc)[:120]}); retrying in {every}s")
 
 
-class SwitchOutcome(typing.NamedTuple):
-    status: int | None   # switch-to-configuration's exit status; None: the unit ended without one
-    journal: list
+def _print_new(journal: List[str], printed: int) -> int:
+    for line in journal[printed:]:
+        print("    " + line)
+    return max(printed, len(journal))
 
 
-def follow_switch(target: str, unit: str, *, deadline=3600, unreachable=900, every=5,
-                  clock=None, sleep=None) -> SwitchOutcome:
+def follow_switch(target: str, unit: str, *, deadline: float = 3600, unreachable: float = 900, every: float = 5,
+                  clock: Optional[Callable[[], float]] = None,
+                  sleep: Optional[Callable[[float], None]] = None) -> SwitchOutcome:
     """Poll the detached switch until it has ended, printing its new journal lines and its state on
     every pass. The host may be unreachable for a while (the switch restarting sshd or the network):
     each failed ssh is said and retried, for `unreachable` seconds in a row at most; the switch as a
@@ -520,34 +210,16 @@ def follow_switch(target: str, unit: str, *, deadline=3600, unreachable=900, eve
         try:
             facts = parse_switch_status(remote(target, SWITCH_STATUS, [unit], timeout=90))
         except Unmeasured as exc:
-            if clock() - last_reached > unreachable:
-                raise Unmeasured(f"{target} unreachable for over {unreachable}s while {unit} ran "
-                                 f"(last: {exc})") from exc
-            print(f"   · [{elapsed:5.0f}s] {target} not answering ({str(exc)[:120]}); retrying in {every}s")
+            _note_unreachable(exc, target, unit, elapsed, clock() - last_reached, unreachable, every)
             sleep(every)
             continue
         last_reached = clock()
-        journal = facts["journal"]
-        for line in journal[printed:]:
-            print("    " + line)
-        printed = max(printed, len(journal))
-        if "status" in facts:
-            return SwitchOutcome(facts["status"], journal)
-        state = facts.get("state", "")
-        if state in ("inactive", "failed"):
-            # The status file is written before the unit exits: gone without one is a killed switch.
-            return SwitchOutcome(None, journal)
-        print(f"   · [{elapsed:5.0f}s] {unit} {state or 'state unknown'}; running {facts.get('now', '?')}")
+        printed = _print_new(facts["journal"], printed)
+        outcome = switch_ended(facts)
+        if outcome:
+            return outcome
+        print(f"   · [{elapsed:5.0f}s] {unit} {facts.get('state', '') or 'state unknown'}; running {facts.get('now', '?')}")
         sleep(every)
-
-
-def switch_problem(unit: str, outcome: SwitchOutcome) -> str | None:
-    """What the switch's own result says is wrong; None when it exited 0."""
-    if outcome.status == 0:
-        return None
-    what = (f"exited {outcome.status}" if outcome.status is not None
-            else "ended without an exit status (killed?)")
-    return f"switch-to-configuration in {unit} {what}"
 
 
 def switch_unit_name(now: float) -> str:
@@ -558,7 +230,7 @@ def switch_unit_name(now: float) -> str:
 # Getting the closure onto the host
 # -------------------------------------------------------------------------------------------------
 
-def probe_until_answered(target: str, args: list[str], *, attempts: int = 24, every: int = 5) -> str:
+def probe_until_answered(target: str, args: List[str], *, attempts: int = 24, every: int = 5) -> str:
     """One PROBE, retried while the host does not answer (sshd or the network still restarting after a
     switch): `attempts` x `every` seconds at most, then the last failure is Unmeasured."""
     for _ in range(attempts - 1):
@@ -566,7 +238,7 @@ def probe_until_answered(target: str, args: list[str], *, attempts: int = 24, ev
             return remote(target, PROBE, args, timeout=300)
         except Unmeasured as exc:
             print(f"   · {target} not answering the post-switch probe ({str(exc)[:120]}); retrying in {every}s")
-            time.sleep(every)
+            _sleep(every)
     return remote(target, PROBE, args, timeout=300)
 
 
@@ -580,50 +252,137 @@ def build_on_host(flake: str, host: str, target: str) -> None:
         capture=False, timeout=7200)
 
 
-def deploy(args) -> int:
-    host = args.host
-    checkout = check_checkout(args.allow_stale)
-    print(checkout)
-    flake = flake_ref()
+# -------------------------------------------------------------------------------------------------
+# One deploy
+# -------------------------------------------------------------------------------------------------
 
-    address = ""
+class Closure(NamedTuple):
+    """What a deploy activates: the closure, the revision it should report, how it got there, and the host's probe of it."""
+    candidate: str
+    expected_rev: str
+    via: str
+    facts: Facts
+
+
+def _deploy_address(flake: str, host: str) -> str:
     for attr in ("deployAddress", "publicAddress"):
         try:
             address = nix_eval(flake, f"{host}.config.fleet.{attr}")
         except Unmeasured:
             continue
         if address:
-            break
-    target = choose_target(host, address, ssh_g_hostname(host), os.environ.get("SSH_USER", ""))
-    via = "staged closure, nix-env --set + switch-to-configuration"
+            return address
+    return ""
+
+
+def _probe(target: str, candidate: str) -> Facts:
+    return parse_probe(remote(target, PROBE, [candidate], timeout=900))
+
+
+def _stand_in(build: bool, flake: str, host: str, target: str, candidate: str, facts: Facts) -> Optional[Tuple[str, str]]:
+    """The closure to deploy when this checkout's is not on the host: CI's pin, or one built there."""
+    chosen = choose_candidate(candidate, False, facts.get("pinned", ""), facts.get("pinned_rev", ""),
+                              same_flake_tree(facts.get("pinned_rev", "")))
+    if chosen is None and build:
+        build_on_host(flake, host, target)
+        return candidate, "this checkout's closure, built on the host"
+    return chosen
+
+
+def _closure_on_host(args: argparse.Namespace, flake: str, host: str, target: str, checkout: str) -> Closure:
     candidate = nix_eval(flake, f"{host}.config.system.build.toplevel.outPath")
     expected_rev = nix_eval(flake, f"{host}.config.system.configurationRevision")
-    facts = parse_probe(remote(target, PROBE, [candidate], timeout=900))
-    if facts.get("candidate_present") != "1":
-        chosen = choose_candidate(candidate, False, facts.get("pinned", ""),
-                                  facts.get("pinned_rev", ""),
-                                  same_flake_tree(facts.get("pinned_rev", "")))
-        if chosen is None and args.build:
-            build_on_host(flake, host, target)
-            chosen = (candidate, "this checkout's closure, built on the host")
-        if chosen is None:
-            print(render_preview(host, target, facts, None, candidate, expected_rev, checkout, via))
-            raise Refused(f"{candidate} is not on {host}, and CI's pin is not from an identical "
-                          "tree. Wait for CI staging (nix-stage-closures) to put it there, or "
-                          "pass --build to build it on the host.")
-        else:
-            candidate, why = chosen
-            if candidate == facts.get("pinned"):
-                expected_rev = facts.get("pinned_rev", "")
-            via += f"; {why}"
-            facts = parse_probe(remote(target, PROBE, [candidate], timeout=900))
+    via = "staged closure, nix-env --set + switch-to-configuration"
+    facts = _probe(target, candidate)
+    if facts.get("candidate_present") == "1":
+        return Closure(candidate, expected_rev, via, facts)
+    chosen = _stand_in(args.build, flake, host, target, candidate, facts)
+    if chosen is None:
+        print(render_preview(host, target, facts, None, candidate, expected_rev, checkout, via))
+        raise Refused(f"{candidate} is not on {host}, and CI's pin is not from an identical "
+                      "tree. Wait for CI staging (nix-stage-closures) to put it there, or "
+                      "pass --build to build it on the host.")
+    chosen_closure, why = chosen
+    if chosen_closure == facts.get("pinned"):
+        expected_rev = facts.get("pinned_rev", "")
+    return Closure(chosen_closure, expected_rev, f"{via}; {why}", _probe(target, chosen_closure))
 
-    if facts.get("candidate_present") != "1":
-        raise Unmeasured(f"{candidate} is not on {host}")
 
+def _launch(target: str, host: str, candidate: str, unit: str) -> None:
+    """Start the switch detached; the ssh session that starts it may die under it, the unit says what happened."""
+    try:
+        launched = remote(target, LAUNCH, [candidate, unit], timeout=300)
+    except Unmeasured as exc:
+        # The switch may already be restarting sshd under this session: the unit says.
+        print(f"   the launch session ended early ({str(exc)[:120]}); reading {unit} itself")
+        return
+    for line in launched.splitlines():
+        if not line.startswith("@@"):
+            print("    " + line)
+    m = re.search(r"@@ LAUNCHED rc=(\d+)", launched)
+    if not m or m.group(1) != "0":
+        raise Refused(f"systemd-run did not start {unit} on {host} "
+                      f"({m.group(0) if m else 'no launch line'}); nothing was switched")
+    print(f"   switching in {unit} (detached: an ssh drop cannot stop it)")
+
+
+def _switch(target: str, host: str, candidate: str) -> Optional[str]:
+    """Switch and follow it to its end; what its own result says is wrong, if anything."""
+    unit = switch_unit_name(_now())
+    _launch(target, host, candidate, unit)
+    outcome = follow_switch(target, unit)
+    problem = switch_problem(unit, outcome)
+    if problem:
+        print(f"   {problem}; its journal ends:\n      "
+              + ("\n      ".join(outcome.journal[-30:]) or "(empty)"))
+    return problem
+
+
+def _verify(target: str, closure: Closure, watched: List[str], failed_before: Set[str], problem: Optional[str]) -> List[str]:
+    """The problems after the switch: its own, and what the host's probe and the started units say."""
+    _sleep(5)  # a unit that fails on activation does so within seconds
+    after = parse_probe(probe_until_answered(target, [""]))
+    fields = unit_fields(remote(target, VERIFY_STATES, watched, timeout=120)) if watched else {}
+    problems = verify_verdict(closure.candidate, after.get("running", ""), closure.expected_rev,
+                              after.get("running_rev", ""), failed_before,
+                              set(after.get("failed", "").split()), fields)
+    return ([problem] if problem else []) + problems
+
+
+def _apply(host: str, target: str, closure: Closure, preview: Optional[Preview]) -> int:
+    print(f"\n== applying to {host}")
+    watched = watched_units(preview)
+    problems = _verify_after_switch(host, target, closure, watched)
+    if problems:
+        print("VERIFY FAILED:\n  " + "\n  ".join(problems))
+        return 1
+    print(f"verified: {host} runs {closure.candidate}"
+          + (f" at {closure.expected_rev}" if closure.expected_rev else "")
+          + f"; {len(watched)} started/restarted unit(s) healthy; no unit newly failed.")
+    if preview and boot_changes(closure.facts):
+        print(f"REBOOT OWED: {', '.join(boot_changes(closure.facts))} changed; the host still runs the old one.")
+    return 0
+
+
+def _verify_after_switch(host: str, target: str, closure: Closure, watched: List[str]) -> List[str]:
+    failed_before = set(closure.facts.get("failed", "").split())
+    problem = _switch(target, host, closure.candidate)
+    return _verify(target, closure, watched, failed_before, problem)
+
+
+def deploy(args: argparse.Namespace) -> int:
+    host = args.host
+    checkout = check_checkout(args.allow_stale)
+    print(checkout)
+    flake = flake_ref()
+    target = choose_target(host, _deploy_address(flake, host), ssh_g_hostname(host), _ssh_user())
+    closure = _closure_on_host(args, flake, host, target, checkout)
+    facts = closure.facts
+    if facts.get("candidate_present") != "1":
+        raise Unmeasured(f"{closure.candidate} is not on {host}")
     preview = parse_dry_activate(facts["dry"]) if "dry" in facts else None
-    print(render_preview(host, target, facts, preview, candidate, expected_rev, checkout, via))
-    if facts.get("running") == candidate:
+    print(render_preview(host, target, facts, preview, closure.candidate, closure.expected_rev, checkout, closure.via))
+    if facts.get("running") == closure.candidate:
         return 0
     if facts.get("dry_rc", 0) != 0:
         raise Refused(f"dry-activate exited {facts['dry_rc']}: what the switch would do is unknown "
@@ -631,61 +390,13 @@ def deploy(args) -> int:
     if not args.apply:
         print(f"\npreview only. To switch: bin/deploy {host} --apply")
         return 0
-
-    print(f"\n== applying to {host}")
-    failed_before = set(facts.get("failed", "").split())
-    problem = None
-    unit = switch_unit_name(time.time())
-    try:
-        launched = remote(target, LAUNCH, [candidate, unit], timeout=300)
-    except Unmeasured as exc:
-        # The switch may already be restarting sshd under this session: the unit says.
-        print(f"   the launch session ended early ({str(exc)[:120]}); reading {unit} itself")
-    else:
-        for line in launched.splitlines():
-            if not line.startswith("@@"):
-                print("    " + line)
-        m = re.search(r"@@ LAUNCHED rc=(\d+)", launched)
-        if not m or m.group(1) != "0":
-            raise Refused(f"systemd-run did not start {unit} on {host} "
-                          f"({m.group(0) if m else 'no launch line'}); nothing was switched")
-        print(f"   switching in {unit} (detached: an ssh drop cannot stop it)")
-    outcome = follow_switch(target, unit)
-    problem = switch_problem(unit, outcome)
-    if problem:
-        print(f"   {problem}; its journal ends:\n      "
-              + ("\n      ".join(outcome.journal[-30:]) or "(empty)"))
-
-    time.sleep(5)  # a unit that fails on activation does so within seconds
-    after = parse_probe(probe_until_answered(target, [""]))
-    watched = sorted(set(preview.start + preview.restart) if preview else set())
-    fields = {}
-    if watched:
-        out = remote(target, VERIFY_STATES, watched, timeout=120)
-        for line in out.splitlines():
-            if line.startswith("unit "):
-                parts = line.split()
-                fields[parts[1]] = parts[2:]
-    problems = verify_verdict(candidate, after.get("running", ""), expected_rev,
-                              after.get("running_rev", ""), failed_before,
-                              set(after.get("failed", "").split()), fields)
-    if problem:
-        problems.insert(0, problem)
-    if problems:
-        print("VERIFY FAILED:\n  " + "\n  ".join(problems))
-        return 1
-    print(f"verified: {host} runs {candidate}"
-          + (f" at {expected_rev}" if expected_rev else "")
-          + f"; {len(watched)} started/restarted unit(s) healthy; no unit newly failed.")
-    if preview and boot_changes(facts):
-        print(f"REBOOT OWED: {', '.join(boot_changes(facts))} changed; the host still runs the old one.")
-    return 0
+    return _apply(host, target, closure, preview)
 
 
 DOCSTRING = __doc__ or ""  # None under python -OO
 
 
-def main(argv=None) -> int:
+def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=DOCSTRING.split("\n\n")[0])
     parser.add_argument("host", nargs="?")
     parser.add_argument("--apply", action="store_true", help="switch after the preview")
@@ -694,21 +405,30 @@ def main(argv=None) -> int:
     parser.add_argument("--allow-stale", action="store_true",
                         help="deploy a checkout behind origin main (a deliberate rollback)")
     parser.add_argument("--list", action="store_true", help="list the hosts this flake declares")
+    return parser
+
+
+def _run_command(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
+    try:
+        nix_path.put_nix_on_path()
+    except nix_path.NixNotFound as exc:
+        raise Unmeasured(str(exc)) from exc
+    if args.list:
+        hosts = json.loads(run(["nix", "eval", "--json", f"{flake_ref()}#nixosConfigurations",
+                                "--apply", "builtins.attrNames"]).stdout)
+        print("\n".join(hosts))
+        return 0
+    if not args.host:
+        parser.error("name a host (bin/deploy --list)")
+    return deploy(args)
+
+
+def main(argv: Optional[List[str]] = None) -> int:
+    parser = _parser()
     args = parser.parse_args(argv)
     os.chdir(REPO)
     try:
-        try:
-            nix_path.put_nix_on_path()
-        except nix_path.NixNotFound as exc:
-            raise Unmeasured(str(exc)) from exc
-        if args.list:
-            hosts = json.loads(run(["nix", "eval", "--json", f"{flake_ref()}#nixosConfigurations",
-                                    "--apply", "builtins.attrNames"]).stdout)
-            print("\n".join(hosts))
-            return 0
-        if not args.host:
-            parser.error("name a host (bin/deploy --list)")
-        return deploy(args)
+        return _run_command(args, parser)
     except Refused as exc:
         print(f"REFUSED: {exc}", file=sys.stderr)
         return 1
