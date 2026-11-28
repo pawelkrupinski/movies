@@ -88,8 +88,11 @@ class SbtWarmCase(cli_harness.ToolCase):
             "KINOWO_SBT_WARM_STATE": self.state, "KINOWO_IDENTITY_CACHE": self.identity, "KINOWO_SBT_CACHE": self.cache,
             "KINOWO_SBT_CACHE_PUBLISH": "0", "KINOWO_SBT_WARM_SEED": None, "KINOWO_STALL_FILE": None,
             "KINOWO_PROGRESS_FILE": None, "KINOWO_SBT_WARM_KEEPER_POLL": "0.2",
-            "KINOWO_SBT_WARM_KEEPER_GRACE_SECONDS": "2", "KINOWO_GOVERNOR": "0", "MONGODB_URI": None}
+            "KINOWO_SBT_WARM_KEEPER_GRACE_SECONDS": "2", "KINOWO_GOVERNOR": "0", "MONGODB_URI": None, "JAVA_HOME": None}
         self.stub(STUB)
+        # a real jcmd / jstack asked for a thread dump of a stand-in server (no JVM) took ~11 s to give up
+        for dumper in ("jcmd", "jstack"):
+            self.fakes.script(dumper, 'echo "thread dump of pid $*"')
         self.servers: List["subprocess.Popen[bytes]"] = []
         self.addCleanup(self.end_servers)
         self.addCleanup(self.end_keepers)

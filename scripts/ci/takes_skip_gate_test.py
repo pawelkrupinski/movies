@@ -21,6 +21,7 @@ from typing import Dict, List, Optional, Tuple
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
 import cli_harness  # noqa: E402
 
+TEMPLATE_ENV = "TAKES_SKIP_GATE_TEMPLATE"  # a Shared's directory to clone (set by the mutation test, which builds it once)
 TOOL = cli_harness.tool_path("scripts/ci/takes_skip_gate.py", "scripts/ci/takes-skip-gate.sh")
 RULES = "common/src/main/resources/title-rules.tsv"
 FILES = (RULES, "common/src/main/scala/services/titles/rules/Rules.scala",
@@ -81,9 +82,13 @@ exit 0
 class Shared:
     """The scratch repository, traces and proof every case reads, made once for the class."""
 
-    def __init__(self, directory: str) -> None:
+    def __init__(self, directory: str, template: Optional[str] = None) -> None:
+        """Built from scratch, or cloned from `template` (a Shared's directory: APFS copy-on-write where there is one)."""
         self.dir = directory
         self.repo = os.path.join(directory, "repo")
+        if template is not None:
+            self.clone(template)
+            return
         os.makedirs(self.repo)
         self.git("init", "-q", "-b", "main")
         for f in FILES:
@@ -102,6 +107,16 @@ class Shared:
         with open(self.proof, "w") as f:
             f.write(PROOF)
         os.chmod(self.proof, 0o755)
+
+    def clone(self, template: str) -> None:
+        """The template's repository, traces and proof copied here, its commits read back (the mutation test builds the
+        template once and every mutant's run clones it instead of replaying the git history)."""
+        if subprocess.run(["cp", "-cR", template + "/.", self.dir], capture_output=True).returncode != 0:
+            shutil.copytree(template, self.dir, dirs_exist_ok=True)
+        self.base = self.git("rev-parse", "main")
+        self.commits = {name: self.git("rev-parse", name) for name in CASES}
+        self.trace, self.empty_trace = (os.path.join(self.dir, n) for n in ("trace.jsonl.gz", "empty-trace.jsonl.gz"))
+        self.broken_trace, self.proof = os.path.join(self.dir, "broken-trace.jsonl.gz"), os.path.join(self.dir, "proof")
 
     def put(self, relative: str, text: str) -> None:
         full = os.path.join(self.repo, relative)
@@ -154,7 +169,7 @@ class TakesSkipGateTest(cli_harness.ToolCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls._shared_dir = os.path.realpath(tempfile.mkdtemp(prefix="takes-skip-gate-"))
-        cls.shared = Shared(cls._shared_dir)
+        cls.shared = Shared(cls._shared_dir, os.environ.get(TEMPLATE_ENV))
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -287,7 +302,7 @@ class TakesSkipGateTest(cli_harness.ToolCase):
         self.decide("rules", proof="crash")
         self.assertIn("[normalizer-trace] could not read the trace: boom", self.err)
 
-    def test_a_proof_that_hangs_is_cut_off_leaving_nothing_running(self) -> None:
+    def test_zz_slow_a_proof_that_hangs_is_cut_off_leaving_nothing_running(self) -> None:
         self.assertEqual("RUN 1 1", f"{self.decide('rules', proof='hang')} {self.because('the proof exited 124')}")
         self.assertEqual(0, cli_harness.still_running(self.hung))
 
@@ -306,7 +321,7 @@ class TakesSkipGateTest(cli_harness.ToolCase):
             gate.wait()
         self.assertEqual(0, cli_harness.still_running(self.hung))
 
-    def test_a_gate_ended_as_it_starts_its_proof_ends_its_proof_too(self) -> None:
+    def test_zz_slow_a_gate_ended_as_it_starts_its_proof_ends_its_proof_too(self) -> None:
         s, pids = self.shared, self.path("ended-pids")
         gate = subprocess.run([sys.executable, "-c", ENDED_AS_IT_STARTS, self.TOOL, s.base, s.commits["rules"], s.trace,
                                "--", s.proof], cwd=s.repo, timeout=60, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,

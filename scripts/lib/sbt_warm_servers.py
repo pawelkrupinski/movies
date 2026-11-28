@@ -10,9 +10,10 @@ import re
 import signal
 import sys
 from dataclasses import dataclass
-from typing import Callable, List, Optional, Protocol
+from typing import Callable, Dict, List, Optional, Protocol
 
 import machine
+import ps_table
 from jvm_gate import lock_busy
 
 STOPS_KEPT, STOPS_CUT = 5000, 2000
@@ -29,9 +30,9 @@ class ProcessTable(Protocol):
 
     def parent(self, pid: int) -> int: ...
 
-    def cwd(self, pid: int) -> str: ...
+    def cwds(self, pids: List[int]) -> Dict[int, str]: ...
 
-    def matching(self, pattern: str) -> List[int]: ...
+    def matching(self, pattern: str) -> Dict[int, str]: ...
 
     def alive(self, pid: int) -> bool: ...
 
@@ -39,21 +40,37 @@ class ProcessTable(Protocol):
 
 
 class Procs:
-    """The process table, through ps, pgrep and lsof on the PATH (a case shims them), and signals."""
+    """The process table, through ps and lsof on the PATH (a case shims them), and signals. `capture` runs a command and
+    returns its output: the seam a unit test hands canned `ps` / `lsof` text."""
+
+    def __init__(self, capture: Callable[[List[str]], str] = command_out) -> None:
+        self.capture = capture
 
     def args(self, pid: int) -> str:
-        return command_out(["ps", "-o", "args=", "-p", str(pid)]).strip()
+        return self.capture(["ps", "-o", "args=", "-p", str(pid)]).strip()
 
     def parent(self, pid: int) -> int:
-        out = command_out(["ps", "-o", "ppid=", "-p", str(pid)]).strip()
+        out = self.capture(["ps", "-o", "ppid=", "-p", str(pid)]).strip()
         return int(out) if out.isdigit() else 0
 
-    def cwd(self, pid: int) -> str:
-        out = command_out(["lsof", "-a", "-p", str(pid), "-d", "cwd", "-Fn"])
-        return next((line[1:] for line in out.splitlines() if line.startswith("n")), "")
+    def cwds(self, pids: List[int]) -> Dict[int, str]:
+        """The working directory of each of `pids`, ONE lsof for all (a pid it cannot read is left out)."""
+        if not pids:
+            return {}
+        found: Dict[int, str] = {}
+        pid = 0
+        for line in self.capture(["lsof", "-a", "-p", ",".join(map(str, pids)), "-d", "cwd", "-Fpn"]).splitlines():
+            if line.startswith("p") and line[1:].isdigit():
+                pid = int(line[1:])
+            elif line.startswith("n") and pid:
+                found.setdefault(pid, line[1:])
+        return found
 
-    def matching(self, pattern: str) -> List[int]:
-        return [int(p) for p in command_out(["pgrep", "-f", pattern]).split() if p.isdigit()]
+    def matching(self, pattern: str) -> Dict[int, str]:
+        """pid -> command line of every other process whose command line matches `pattern`: ONE ps for the table
+        (pgrep, then a ps a pid, was four processes a lookup)."""
+        table = ps_table.parse(self.capture(["ps", "-Ao", "pid=,ppid=,args="]))
+        return {p.pid: p.args for p in table.values() if p.pid != os.getpid() and re.search(pattern, p.args)}
 
     def alive(self, pid: int) -> bool:
         return machine.alive(pid)
@@ -114,13 +131,8 @@ class Servers:
 
     def pids(self, root: str) -> List[int]:
         """Every sbt server (sbt --client's: --detach-stdio) whose working directory is `root`, oldest first."""
-        found: List[int] = []
-        for pid in self.procs.matching(r"xsbt\.boot\.Boot|sbt-launch"):
-            if "--detach-stdio" in self.procs.args(pid):
-                cwd = self.procs.cwd(pid)
-                if cwd and physical(cwd) == root:
-                    found.append(pid)
-        return sorted(found)
+        servers = [pid for pid, args in self.procs.matching(r"xsbt\.boot\.Boot|sbt-launch").items() if "--detach-stdio" in args]
+        return sorted(pid for pid, cwd in self.procs.cwds(servers).items() if physical(cwd) == root)
 
     def pid(self, root: str) -> Optional[int]:
         pids = self.pids(root)
@@ -239,7 +251,7 @@ class Servers:
         """Whether `pid` is an sbt server whose checkout directory is gone (a pid file outlives its process)."""
         if "--detach-stdio" not in self.procs.args(pid):
             return False
-        cwd = self.procs.cwd(pid)
+        cwd = self.procs.cwds([pid]).get(pid, "")
         return not cwd or not os.path.isdir(cwd)
 
     def reap(self, idle_minutes: Optional[float]) -> None:

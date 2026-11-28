@@ -17,6 +17,7 @@ from typing import Dict, Tuple
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), "lib"))
 import sandbox_closure  # noqa: E402
+import takes_skip_gate_test  # noqa: E402
 from tool_files import Files  # noqa: E402
 from tool_pool import governed_workers  # noqa: E402  (THE GOVERNED FAN-OUT: the mutants' pool under a governor ticket)
 
@@ -52,10 +53,11 @@ MUTANTS: Dict[str, Tuple[str, str]] = {
 }
 
 
-def run_test(gate: str, failfast: Tuple[str, ...] = ()) -> Tuple[int, str]:
-    """takes_skip_gate_test.py against `gate` -> its exit and output; `("-f",)` stops at its first failure (one kills a
-    mutant)."""
-    env = {**os.environ, "CLI_TOOL_UNDER_TEST": gate, "SPEC_HANG_BOUND": "20"}
+def run_test(gate: str, template: str, failfast: Tuple[str, ...] = ()) -> Tuple[int, str]:
+    """takes_skip_gate_test.py against `gate`, its scratch repository cloned from `template` -> its exit and output;
+    `("-f",)` stops at its first failure (one kills a mutant)."""
+    env = {**os.environ, "CLI_TOOL_UNDER_TEST": gate, "SPEC_HANG_BOUND": "20",
+           takes_skip_gate_test.TEMPLATE_ENV: template}
     done = subprocess.run([sys.executable, TEST, *failfast], env=env, capture_output=True, text=True, timeout=600)
     return done.returncode, done.stdout + done.stderr
 
@@ -72,15 +74,19 @@ class TakesSkipGateMutationTest(unittest.TestCase):
                 sandbox_closure.copy(files, ROOT, f"{work}/mutant-{i}", [GATE_PATH])
                 paths[name] = f"{work}/mutant-{i}/{GATE_PATH}"
                 files.replace_text(paths[name], source.replace(frm, to, 1), 0o755)
+            # the scratch repository every run reads, built ONCE here and cloned per run; the unmutated gate's run goes
+            # in the same pool (it is the slowest of all, and has no mutant to wait for)
+            template = takes_skip_gate_test.Shared(f"{work}/template").dir
             with governed_workers("mutation-tests", 4) as width, ThreadPoolExecutor(max_workers=width) as pool:
-                results = dict(zip(paths, pool.map(lambda path: run_test(path, ("-f",)), paths.values())))
+                gate_run = pool.submit(run_test, GATE, template)
+                results = dict(zip(paths, pool.map(lambda path: run_test(path, template, ("-f",)), paths.values())))
+                gate_code, gate_output = gate_run.result()
         for name, (code, output) in results.items():
             with self.subTest(mutant=name):
                 self.assertNotEqual(0, code, f"takes_skip_gate_test.py passed against the mutant '{name}':\n{output}")
                 # one failing test kills a mutant, and its run stops there (-f): the job stays inside its timeout
                 self.assertRegex(output, r"(?m)^FAILED \((failures|errors)=1\)$", output)
-        code, output = run_test(GATE)
-        self.assertEqual(0, code, f"takes_skip_gate_test.py fails against the gate itself:\n{output}")
+        self.assertEqual(0, gate_code, f"takes_skip_gate_test.py fails against the gate itself:\n{gate_output}")
 
 
 if __name__ == "__main__":
