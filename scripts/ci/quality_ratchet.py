@@ -319,12 +319,7 @@ def check_one(ratchet: Ratchet, current: Rows, ranges: List[str], renames: Renam
     return not failed
 
 
-def update_one(ratchet: Ratchet, current: Rows) -> bool:
-    """Write the baseline from the measure; whether it holds no rise past the file's old rows (False: each said)."""
-    try:
-        rises = growth(ratchet, _read_baseline(ratchet.baseline), current, Renames())
-    except FileNotFoundError:
-        rises = []
+def update_one(ratchet: Ratchet, current: Rows) -> None:
     lines = [ratchet.header]
     lines += [f"limit\t{kind}\t{limit_of(current, kind)}" for kind in ratchet.kinds]
     for kind in ratchet.kinds:
@@ -332,7 +327,6 @@ def update_one(ratchet: Ratchet, current: Rows) -> bool:
     with open(ratchet.baseline, "w") as f:
         f.write("\n".join(lines) + "\n")
     print(f"{ratchet.name}: wrote {ratchet.baseline} -- a rise is committed with a `{ratchet.trailer}: <why>` trailer")
-    return not baseline_ratchet.say_rises(ratchet.name, ratchet.baseline, rises)
 
 
 def _parse_args(argv: List[str]) -> argparse.Namespace:
@@ -365,8 +359,24 @@ def _run(args: argparse.Namespace) -> int:
     current = _read_current(args.current)
     chosen = [RATCHETS[name] for name in (args.ratchet or sorted(RATCHETS))]
     if args.command == "update":
-        return 0 if all([update_one(ratchet, current) for ratchet in chosen]) else 1
+        return update_chosen(chosen, current)
     return _check_chosen(chosen, current, args.range)
+
+
+def update_rises(ratchet: Ratchet, current: Rows) -> List[str]:
+    """What `update_one` would record past the baseline's rows now (a missing baseline: none)."""
+    try:
+        return growth(ratchet, _read_baseline(ratchet.baseline), current, Renames())
+    except FileNotFoundError:
+        return []
+
+
+def update_chosen(chosen: List[Ratchet], current: Rows) -> int:
+    """Each chosen baseline written; 1 when any took a rise (each said), else 0."""
+    rises = [(ratchet, update_rises(ratchet, current)) for ratchet in chosen]
+    for ratchet in chosen:
+        update_one(ratchet, current)
+    return int(any([baseline_ratchet.say_rises(r.name, r.baseline, found) for r, found in rises]))
 
 
 def main(argv: List[str]) -> int:

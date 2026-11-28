@@ -91,7 +91,7 @@ def run_one(language: str, rows: Sequence[Row], limit: Dict[str, float], args: a
     current = over_limit(rows, limit)
     spec = ratchet.SPECS[language]
     if args.ratchet == "update":
-        return baseline_ratchet.update(spec, current)
+        return baseline_ratchet.update_saying_rises(spec, current)
     if args.ratchet == "check":
         return baseline_ratchet.check(spec, current, args.range)
     print(quality_report.markdown(f"{language.capitalize()} quality report", rows,

@@ -41,7 +41,7 @@ class UpdateRisesTest(unittest.TestCase):
                 f.write(old)
             err = io.StringIO()
             with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(err):
-                ok = baseline_ratchet.update(spec(path), current)
+                ok = baseline_ratchet.update_saying_rises(spec(path), current)
             with open(path) as f:
                 return ok, err.getvalue(), f.read()
 
