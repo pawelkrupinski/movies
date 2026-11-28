@@ -528,7 +528,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/title-trace` | Every step one raw billing goes through, in production order, to the title the resolver reads | `scripts/title-trace` | wf main; skill CLAUDE.md, identity-investigation; 7 tools | title_trace_test.py | MIGRATE |
 | `scripts/venue-replay` | One venue's listings as the code at one or two git refs reads them, from a recording — never the network | `scripts/venue-replay` | skill CLAUDE.md, identity-investigation; 7 tools | venue_replay_test.py | MIGRATE |
 
-## Mirror and data (92)
+## Mirror and data (93)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -594,6 +594,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/discover-cinemas/discover.py` | Discover new UK cinemas on flicks.co.uk and wire them into the catalog. | `python3 scripts/discover-cinemas/discover.py` | wf decoration-discovery, discover-cinemas, nix-stage-closures; 6 tools | discover_test.py | Python |
 | `scripts/fleet-db-finish` | Count the fleet's three old collections in Poland's kinowo and drop them on an exact request (fleet DB migration, step 9) | `scripts/fleet-db-finish` | 3 tools | fleet_db_finish_test.py | KEEP |
 | `scripts/lib/mongo/mongo_local.py` | THE LOCAL, PASSWORD-FREE MONGO the prod mirror, the it/ suites and the identity tools share (scripts/lib; | `imported` | 10 tools | - | Python |
+| `scripts/lib/mongo/port_probe.py` | WHETHER SOMETHING ANSWERS ON A LOCAL PORT, injected (scripts/lib; CLAUDE.md, "Injected effects": the network reaches a | `imported` | 7 tools | port_probe_test.py | Python |
 | `scripts/lib/mongo/prod_tunnel.py` | HOW A LAPTOP REACHES PROD MONGO, for the Python tools (scripts/lib): scripts/local-mirror/prod-tunnel.sh's | `imported` | 3 tools | prod_tunnel_test.py | Python |
 | `scripts/local-mirror/freshness` | How current the local prod mirror (:28017) is, per country — for every tool that reads it (identity-slice --prod-mirror, listing-history, …) | `scripts/local-mirror/freshness` | wf country-convergence-leg; skill CLAUDE.md, identity-investigation; 25 tools | freshness-test.sh | KEEP |
 | `scripts/local-mirror/local-mongo.sh` | The one place that knows how to make the local mirror Mongo reachable | `scripts/local-mirror/local-mongo.sh` | 1 tool | - | KEEP |
