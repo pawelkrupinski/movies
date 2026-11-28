@@ -45,47 +45,60 @@ import datetime
 import os
 import re
 import sys
+from typing import Collection, Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple, TypeVar
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
 import tool_git  # noqa: E402
 
+T = TypeVar("T")
 FIXTURES = "test/resources/fixtures"
 BACKLOG = f"{FIXTURES}/identity-flip-backlog.tsv"
 
+Key = Tuple[str, str]   # (venue, raw title)
+Flips = Dict[Key, str]
+Candidate = Dict[str, Flips]   # "head" -> flips at the head, "known" -> the backlog's rows
 
-def differential(head, base):
+
+def differential(head: Sequence[T], base: Sequence[T]) -> Tuple[List[T], List[T], List[T]]:
     """(new, gone, both): the keys of `head` not in `base`, of `base` not in `head`, and in both -- in head's order,
     then base's."""
     bset, hset = set(base), set(head)
     return ([k for k in head if k not in bset], [k for k in base if k not in hset], [k for k in head if k in bset])
 
 
-def read_candidates(directory):
+def _read_candidate_file(path: str) -> Tuple[Optional[str], Flips, Flips]:
+    """(slice name or None, head flips, known rows) of one candidate file."""
+    slice_name: Optional[str] = None
+    head: Dict[Key, str] = {}
+    known: Dict[Key, str] = {}
+    with open(path, encoding="utf-8") as fh:
+        for raw in fh:
+            cols = raw.rstrip("\n").split("\t")
+            if len(cols) < 2:
+                continue
+            if cols[0] == "slice":
+                slice_name = cols[1]
+            elif len(cols) >= 4 and cols[0] in ("head", "known"):
+                (head if cols[0] == "head" else known)[(cols[1], cols[2])] = cols[3]
+    return slice_name, head, known
+
+
+def read_candidates(directory: str) -> Dict[str, Candidate]:
     """{slice: {"head": {(venue, title): line}, "known": {(venue, title): note}}} of every candidate file."""
-    out = {}
+    out: Dict[str, Candidate] = {}
     if not os.path.isdir(directory):
         return out
-    for name in sorted(os.listdir(directory)):
-        if not name.endswith(".tsv"):
-            continue
-        slice_name, head, known = None, {}, {}
-        with open(os.path.join(directory, name), encoding="utf-8") as fh:
-            for raw in fh:
-                cols = raw.rstrip("\n").split("\t")
-                if cols[0] == "slice" and len(cols) >= 2:
-                    slice_name = cols[1]
-                elif cols[0] == "head" and len(cols) >= 4:
-                    head[(cols[1], cols[2])] = cols[3]
-                elif cols[0] == "known" and len(cols) >= 4:
-                    known[(cols[1], cols[2])] = cols[3]
+    for name in sorted(n for n in os.listdir(directory) if n.endswith(".tsv")):
+        slice_name, head, known = _read_candidate_file(os.path.join(directory, name))
         if slice_name:
             out[slice_name] = {"head": head, "known": known}
     return out
 
 
-def read_base(path):
+def read_base(path: str) -> Tuple[Dict[str, Flips], Dict[str, str]]:
     """({slice: {(venue, title): shape-and-path}} of every slice the base walked, {slice: why} of those it could not)."""
-    walked, failed = {}, {}
+    walked: Dict[str, Flips] = {}
+    failed: Dict[str, str] = {}
     if not os.path.exists(path):
         return walked, failed
     with open(path, encoding="utf-8") as fh:
@@ -104,7 +117,7 @@ def read_base(path):
     return walked, failed
 
 
-def country_of(slice_name):
+def country_of(slice_name: str) -> str:
     """A slice's country: drift-slices/<cc>/<name>, identity-slices/<cc>-<name> (PopulationMonotonicitySpec.countryOf)."""
     m = re.match(r"^drift-slices/([a-z]{2})/", slice_name) or re.match(r"^identity-slices/([a-z]{2})-", slice_name)
     if not m:
@@ -112,7 +125,7 @@ def country_of(slice_name):
     return m.group(1)
 
 
-def backlog_row(slice_name, venue, raw_title, note, first_seen, owner="identity"):
+def backlog_row(slice_name: str, venue: str, raw_title: str, note: str, first_seen: str, owner: str = "identity") -> str:
     """The backlog's `population` row of a flip the walk finds (its header: kind, country, seed, slice, venue, rawTitle,
     takes, firstSeen, owner, note)."""
     clean = [c.replace("\t", " ").replace("\n", " ") for c in (venue, raw_title, note)]
@@ -120,13 +133,13 @@ def backlog_row(slice_name, venue, raw_title, note, first_seen, owner="identity"
                       clean[2]])
 
 
-def population_rows(text):
+def population_rows(text: Optional[str]) -> Dict[str, List[Key]]:
     """{slice: [(venue, raw title), ...]} of the backlog's `population` rows (by its header)."""
     rows = [ln.split("\t") for ln in (text or "").splitlines() if ln and not ln.startswith("#")]
     if not rows:
         return {}
     head = rows[0]
-    out = {}
+    out: Dict[str, List[Key]] = {}
     for r in rows[1:]:
         row = dict(zip(head, r))
         if row.get("kind") == "population":
@@ -134,7 +147,7 @@ def population_rows(text):
     return {k: sorted(v) for k, v in out.items()}
 
 
-def _rows_at(base, cwd):
+def _rows_at(base: str, cwd: str) -> Tuple[Dict[str, List[Key]], Dict[str, List[Key]]]:
     """The backlog's `population` rows at `base` and in the working tree."""
     shown = tool_git.Git.here(cwd).out("show", f"{base}:{BACKLOG}", quiet=True) or ""
     try:
@@ -145,12 +158,12 @@ def _rows_at(base, cwd):
     return population_rows(shown), head
 
 
-def brought(candidates, base, cwd="."):
+def brought(candidates: Collection[str], base: str, cwd: str = ".") -> List[str]:
     """The candidate slices the change brings against `base` (the working tree's side): data that differ (a new or
     edited slice, an untracked file in it) or `population` rows of it the backlog added or removed."""
     base_rows, head_rows = _rows_at(base, cwd)
     git = tool_git.Git.here(cwd)
-    out = []
+    out: List[str] = []
     for name in sorted(candidates):
         path = f"{FIXTURES}/{name}"
         changed = not git.ok("diff", "--quiet", base, "--", path, quiet=True)
@@ -163,7 +176,7 @@ def brought(candidates, base, cwd="."):
 SLICE_ROOTS = ("drift-slices", "identity-slices")
 
 
-def slice_of(path):
+def slice_of(path: str) -> Optional[str]:
     """The slice a fixtures path lies in (drift-slices/<cc>/<name>, identity-slices/<name>), or None."""
     parts = path.split("/")
     if len(parts) >= 3 and parts[0] == "drift-slices":
@@ -173,7 +186,7 @@ def slice_of(path):
     return None
 
 
-def changed_slices(base, cwd="."):
+def changed_slices(base: str, cwd: str = ".") -> List[str]:
     """Every committed slice the change brings against `base` (the working tree's side), as `brought` reads one: its
     files differ or are untracked, or its `population` rows changed -- the slices on disk only (a deleted one walks no
     more)."""
@@ -184,13 +197,13 @@ def changed_slices(base, cwd="."):
     names = {slice_of(p[len(FIXTURES) + 1:]) for p in paths if p.startswith(FIXTURES + "/")}
     base_rows, head_rows = _rows_at(base, cwd)
     names |= {n for n in set(base_rows) | set(head_rows) if base_rows.get(n, []) != head_rows.get(n, [])}
-    def on_disk(name):
+    def on_disk(name: str) -> bool:
         root = os.path.join(cwd, FIXTURES, name)
         return os.path.isdir(root) and any(files for _, _, files in os.walk(root))
     return sorted(n for n in names if n and on_disk(n))
 
 
-def struck_listings(cwd="."):
+def struck_listings(cwd: str = ".") -> Set[Tuple[str, ...]]:
     """(country, venue, raw title) of every struck flip (identity-flips-struck.tsv): they pass in any slice."""
     try:
         with open(os.path.join(cwd, FIXTURES, "identity-flips-struck.tsv"), encoding="utf-8") as fh:
@@ -200,13 +213,11 @@ def struck_listings(cwd="."):
     return {tuple(c[:3]) for c in lines[1:] if len(c) >= 3}
 
 
-def judge_walk(lines, cwd="."):
-    """(refusals, notes) of PopulationMonotonicitySpec.main's walk of some slices, judged on the working tree's known
-    rows alone -- what main's spec does with them: a flip no `population` row names (a struck listing's aside), a known
-    row whose listing no longer flips, a rule contract breach and a walk that failed each refuse."""
-    _, known_rows = _rows_at("HEAD", cwd)
-    struck = struck_listings(cwd)
-    walked, failed, breaches = {}, [], []
+def _parse_walk(lines: Iterable[str]) -> Tuple[Dict[str, Flips], List[str], List[str]]:
+    """(flips by slice, failed-walk refusals, rule-breach refusals) of PopulationMonotonicitySpec.main's walk."""
+    walked: Dict[str, Flips] = {}
+    failed: List[str] = []
+    breaches: List[str] = []
     for raw in lines:
         line = raw.rstrip("\n")
         if line.startswith("# "):
@@ -221,7 +232,18 @@ def judge_walk(lines, cwd="."):
         cols = line.split("\t")
         if len(cols) >= 4:
             walked.setdefault(cols[0], {})[(cols[1], cols[2])] = f"{cols[1]} | {cols[2]}: {cols[3]}"
-    refusals, notes = failed + breaches, []
+    return walked, failed, breaches
+
+
+def judge_walk(lines: Iterable[str], cwd: str = ".") -> Tuple[List[str], List[str]]:
+    """(refusals, notes) of PopulationMonotonicitySpec.main's walk of some slices, judged on the working tree's known
+    rows alone -- what main's spec does with them: a flip no `population` row names (a struck listing's aside), a known
+    row whose listing no longer flips, a rule contract breach and a walk that failed each refuse."""
+    _, known_rows = _rows_at("HEAD", cwd)
+    struck = struck_listings(cwd)
+    walked, failed, breaches = _parse_walk(lines)
+    refusals = failed + breaches
+    notes: List[str] = []
     for name, head in sorted(walked.items()):
         if any(f.startswith(f"the walk of {name} ") for f in failed):
             continue
@@ -234,9 +256,9 @@ def judge_walk(lines, cwd="."):
     return refusals, notes
 
 
-def strict(name, head, known, why, label):
+def strict(name: str, head: Flips, known: Mapping[Key, str], why: str, label: str) -> Tuple[List[str], str]:
     """Judged on the known rows alone, as main's spec judges: (refusals, note)."""
-    refusals = []
+    refusals: List[str] = []
     for k, line in head.items():
         if k not in known:
             refusals.append(f"NEW flip ({label}): {name}: {line}" if label != "brought" else
@@ -250,40 +272,54 @@ def strict(name, head, known, why, label):
     return refusals, f"{name}: {why}: judged on the known rows alone"
 
 
-def judge(candidates, walked, failed, brought_slices=()):
-    """(refusals, notes): one line each."""
-    refusals, notes = [], []
-    for name, c in sorted(candidates.items()):
-        head, known = c["head"], c["known"]
-        if name in brought_slices or name not in walked:
-            why, label = (("the change brings the slice or its known rows (no base to compare: main's spec judges it so)",
-                           "brought") if name in brought_slices else
-                          (f"the base could not walk it ({failed.get(name, 'no rows came back')})", "base unwalked"))
-            more, note = strict(name, head, known, why, label)
-            refusals += more
-            notes.append(note)
+def _judge_slice_against_base(name: str, candidate: Candidate, base: Flips) -> Tuple[List[str], List[str]]:
+    """(refusals, notes) of a slice the base walked: only what the change adds or cures counts."""
+    head, known = candidate["head"], candidate["known"]
+    refusals: List[str] = []
+    notes: List[str] = []
+    new, _, both = differential([k for k in head if k not in known], list(base))
+    refusals += [f"NEW flip the base does not have: {name}: {head[k]}" for k in new]
+    notes += [f"pre-existing (the base flips it too, main's): {name}: {head[k]}" for k in both]
+    for k, note in known.items():
+        if k in head:
             continue
-        base = walked[name]
-        fresh = [k for k in head if k not in known]
-        new, _, both = differential(fresh, list(base))
-        for k in new:
-            refusals.append(f"NEW flip the base does not have: {name}: {head[k]}")
-        for k in both:
-            notes.append(f"pre-existing (the base flips it too, main's): {name}: {head[k]}")
-        for k, note in known.items():
-            if k in head:
-                continue
-            if k in base:
-                refusals.append(f"CURED known row (the base flips it, this change does not) -- remove it from "
-                                f"identity-flip-backlog.tsv: {name}: {k[0]} | {k[1]} ({note})")
-            else:
-                notes.append(f"stale known row (the base does not flip it either, main's): {name}: {k[0]} | {k[1]}")
+        if k in base:
+            refusals.append(f"CURED known row (the base flips it, this change does not) -- remove it from "
+                            f"identity-flip-backlog.tsv: {name}: {k[0]} | {k[1]} ({note})")
+        else:
+            notes.append(f"stale known row (the base does not flip it either, main's): {name}: {k[0]} | {k[1]}")
     return refusals, notes
 
 
-def rows(lines, first_seen, owner):
+def _unjudgeable(name: str, brought_slices: Collection[str], failed: Dict[str, str]) -> Tuple[str, str]:
+    """(why, label) a slice is judged on the known rows alone: the change brings it, or the base could not walk it."""
+    if name in brought_slices:
+        return "the change brings the slice or its known rows (no base to compare: main's spec judges it so)", "brought"
+    return f"the base could not walk it ({failed.get(name, 'no rows came back')})", "base unwalked"
+
+
+def judge(candidates: Dict[str, Candidate], walked: Dict[str, Flips], failed: Dict[str, str],
+          brought_slices: Collection[str] = ()) -> Tuple[List[str], List[str]]:
+    """(refusals, notes): one line each."""
+    refusals: List[str] = []
+    notes: List[str] = []
+    for name, c in sorted(candidates.items()):
+        if name in brought_slices or name not in walked:
+            why, label = _unjudgeable(name, brought_slices, failed)
+            more, note = strict(name, c["head"], c["known"], why, label)
+            refusals += more
+            notes.append(note)
+        else:
+            more, more_notes = _judge_slice_against_base(name, c, walked[name])
+            refusals += more
+            notes += more_notes
+    return refusals, notes
+
+
+def rows(lines: Iterable[str], first_seen: str, owner: str) -> Tuple[List[str], List[str]]:
     """(backlog rows, failed slices) of PopulationMonotonicitySpec.main's walk output."""
-    out, failed = [], []
+    out: List[str] = []
+    failed: List[str] = []
     for raw in lines:
         line = raw.rstrip("\n")
         if line.startswith("# "):
@@ -297,15 +333,15 @@ def rows(lines, first_seen, owner):
     return out, failed
 
 
-def file_rows(backlog, new_rows):
+def file_rows(backlog: str, new_rows: Sequence[str]) -> List[str]:
     """Append to `backlog` each row whose (kind, slice, venue, raw title) no row of it holds; the rows appended."""
-    def key(row):
+    def key(row: str) -> Optional[Tuple[str, str, str, str]]:
         c = row.split("\t")
         return (c[0], c[3], c[4], c[5]) if len(c) >= 6 else None
     with open(backlog, encoding="utf-8") as fh:
         text = fh.read()
     held = {key(ln) for ln in text.splitlines() if ln and not ln.startswith("#")}
-    added = []
+    added: List[str] = []
     for r in new_rows:
         if key(r) not in held:
             held.add(key(r))
@@ -319,58 +355,94 @@ def file_rows(backlog, new_rows):
 DOCSTRING = __doc__ or ""  # None under python -OO
 
 
-def main(argv):
-    if len(argv) == 2 and argv[0] == "slices":
-        for name in sorted(read_candidates(argv[1])):
-            print(name)
-        return 0
-    if len(argv) == 3 and argv[0] == "brought":
-        for name in brought(read_candidates(argv[1]), argv[2]):
-            print(name)
-        return 0
-    if len(argv) == 2 and argv[0] == "changed-slices":
-        for name in changed_slices(argv[1]):
-            print(name)
-        return 0
-    if len(argv) == 2 and argv[0] == "judge-walk":
-        with open(argv[1], encoding="utf-8") as fh:
-            refusals, notes = judge_walk(fh)
-        for line in notes + refusals:
-            print(f"population walk: {line}")
-        print(f"population walk: {len(notes)} slice(s) the change brings, judged on the known rows: "
-              f"{'REFUSED, ' + str(len(refusals)) + ' row(s)' if refusals else 'every flip known'}")
-        return 1 if refusals else 0
-    if argv and argv[0] == "rows":
-        opts = dict(zip(argv[1::2], argv[2::2]))
-        out, failed = rows(sys.stdin, opts.get("--first-seen", datetime.date.today().isoformat()),
-                           opts.get("--owner", "identity"))
-        if "--into" in opts and not failed:
-            out = file_rows(opts["--into"], out)
-        for r in out:
-            print(r)
-        for f in failed:
-            print(f"population walk: {f}", file=sys.stderr)
-        return 1 if failed else 0
-    brought_file = None
-    if len(argv) == 5 and argv[3] == "--brought":
-        brought_file, argv = argv[4], argv[:3]
-    if len(argv) != 3 or argv[0] != "judge":
-        print(DOCSTRING.split("\n\n")[-2], file=sys.stderr)
-        return 2
-    candidates = read_candidates(argv[1])
-    walked, failed = read_base(argv[2])
-    listed = set()
+def _print_names(names: Collection[str]) -> int:
+    for name in names:
+        print(name)
+    return 0
+
+
+def _slices_command(argv: List[str]) -> int:
+    return _print_names(sorted(read_candidates(argv[1])))
+
+
+def _brought_command(argv: List[str]) -> int:
+    return _print_names(brought(read_candidates(argv[1]), argv[2]))
+
+
+def _changed_slices_command(argv: List[str]) -> int:
+    return _print_names(changed_slices(argv[1]))
+
+
+def _verdict_line(refusals: List[str], clean: str) -> str:
+    return f"REFUSED, {len(refusals)} row(s)" if refusals else clean
+
+
+def _judge_walk_command(argv: List[str]) -> int:
+    with open(argv[1], encoding="utf-8") as fh:
+        refusals, notes = judge_walk(fh)
+    for line in notes + refusals:
+        print(f"population walk: {line}")
+    print(f"population walk: {len(notes)} slice(s) the change brings, judged on the known rows: "
+          f"{_verdict_line(refusals, 'every flip known')}")
+    return 1 if refusals else 0
+
+
+def _rows_command(argv: List[str]) -> int:
+    opts = dict(zip(argv[1::2], argv[2::2]))
+    out, failed = rows(sys.stdin, opts.get("--first-seen", datetime.date.today().isoformat()), opts.get("--owner", "identity"))
+    if "--into" in opts and not failed:
+        out = file_rows(opts["--into"], out)
+    for r in out:
+        print(r)
+    for f in failed:
+        print(f"population walk: {f}", file=sys.stderr)
+    return 1 if failed else 0
+
+
+def _judge_files(candidates_dir: str, base_rows: str, brought_file: Optional[str]) -> int:
+    candidates = read_candidates(candidates_dir)
+    walked, failed = read_base(base_rows)
+    listed: Set[str] = set()
     if brought_file:
         with open(brought_file, encoding="utf-8") as fh:
             listed = {ln.strip() for ln in fh if ln.strip()}
     refusals, notes = judge(candidates, walked, failed, listed)
-    for n in notes:
-        print(f"population walk: {n}")
-    for r in refusals:
-        print(f"population walk: {r}")
-    print(f"population walk: {len(candidates)} slice(s) judged against the base: "
-          f"{'REFUSED, ' + str(len(refusals)) + ' row(s)' if refusals else 'nothing new'}")
+    for line in notes + refusals:
+        print(f"population walk: {line}")
+    print(f"population walk: {len(candidates)} slice(s) judged against the base: {_verdict_line(refusals, 'nothing new')}")
     return 1 if refusals else 0
+
+
+def _judge_command(argv: List[str]) -> int:
+    brought_file = None
+    if len(argv) == 5 and argv[3] == "--brought":
+        brought_file, argv = argv[4], argv[:3]
+    if len(argv) != 3:
+        return _usage()
+    return _judge_files(argv[1], argv[2], brought_file)
+
+
+def _usage() -> int:
+    print(DOCSTRING.split("\n\n")[-2], file=sys.stderr)
+    return 2
+
+
+# subcommand -> (argument count it takes, or None for any, handler)
+COMMANDS = {
+    "slices": (2, _slices_command),
+    "brought": (3, _brought_command),
+    "changed-slices": (2, _changed_slices_command),
+    "judge-walk": (2, _judge_walk_command),
+    "rows": (None, _rows_command),
+}
+
+
+def main(argv: List[str]) -> int:
+    if argv and argv[0] in COMMANDS:
+        arity, handler = COMMANDS[argv[0]]
+        if arity is None or len(argv) == arity:
+            return handler(argv)
+    return _judge_command(argv) if argv[:1] == ["judge"] else _usage()
 
 
 if __name__ == "__main__":
