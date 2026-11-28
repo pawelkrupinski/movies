@@ -28,7 +28,13 @@ let
 
   script = pkgs.writers.writePython3Bin "scheduled-dispatch" {
     flakeIgnore = [ "E501" "E265" ];
-  } (builtins.readFile ../../files/scheduled_dispatch.py);
+  } (builtins.replaceStrings
+    # The script is split by concept into the modules of scheduled_dispatch_parts/; the built script lives in the
+    # store and its siblings do not, so the one line that puts its own directory on sys.path names the store copy.
+    # infra/test/test_nix_python_writers.py lints the modules and fails when this line leaves the source.
+    [ ''sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), "scheduled_dispatch_parts"))'' ]
+    [ ''sys.path.insert(0, "${../../files/scheduled_dispatch_parts}")'' ]
+    (builtins.readFile ../../files/scheduled_dispatch.py));
 
   unit = name: "scheduled-dispatch-${name}";
 in

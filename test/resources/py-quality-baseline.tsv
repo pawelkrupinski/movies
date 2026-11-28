@@ -43,13 +43,6 @@ cognitive	infra/nix/files/identity-regressions.py:build_net_lost	14
 cognitive	infra/nix/files/identity-regressions.py:episodes	13
 cognitive	infra/nix/files/identity-regressions.py:film_net_lost	13
 cognitive	infra/nix/files/identity-regressions.py:load_judgements	11
-cognitive	infra/nix/files/scheduled_dispatch.py:Slot.ensure	18
-cognitive	infra/nix/files/scheduled_dispatch.py:Slot.guard	19
-cognitive	infra/nix/files/scheduled_dispatch.py:_field	16
-cognitive	infra/nix/files/scheduled_dispatch.py:_on_block	11
-cognitive	infra/nix/files/scheduled_dispatch.py:_sub_block	11
-cognitive	infra/nix/files/scheduled_dispatch.py:problems	19
-cognitive	infra/nix/files/scheduled_dispatch.py:staggering	17
 cognitive	scripts/adopt_ci_budgets.py:adopt	17
 cognitive	scripts/adopt_ci_budgets.py:read_figures	12
 cognitive	scripts/aot-class-list.py:loaded_classes	20
@@ -140,12 +133,6 @@ cyclomatic	infra/bin/snapshot-label-values:main	11
 cyclomatic	infra/nix/files/identity-regressions.py:build_net_lost	17
 cyclomatic	infra/nix/files/identity-regressions.py:episodes	11
 cyclomatic	infra/nix/files/identity-regressions.py:film_net_lost	12
-cyclomatic	infra/nix/files/scheduled_dispatch.py:Slot.ensure	11
-cyclomatic	infra/nix/files/scheduled_dispatch.py:Slot.guard	13
-cyclomatic	infra/nix/files/scheduled_dispatch.py:_field	12
-cyclomatic	infra/nix/files/scheduled_dispatch.py:problems	13
-cyclomatic	infra/nix/files/scheduled_dispatch.py:rate_limit_reset	12
-cyclomatic	infra/nix/files/scheduled_dispatch.py:staggering	12
 cyclomatic	scripts/adopt_ci_budgets.py:adopt	12
 cyclomatic	scripts/agent_time.py:main	11
 cyclomatic	scripts/aot-class-list.py:loaded_classes	16
@@ -219,7 +206,6 @@ file-lines	infra/bin/backtest-alerts	1157
 file-lines	infra/bin/backtest-alerts-local	540
 file-lines	infra/bin/deploy	721
 file-lines	infra/bin/nix-update	565
-file-lines	infra/nix/files/scheduled_dispatch.py	599
 file-lines	scripts/identity_what_if.py	518
 copies	infra/bin/backtest-alerts	2
 copies	scripts/ci/lint_per_file_check.py|scripts/ci/lint_reads_trace.py	2
@@ -235,7 +221,6 @@ pyright	infra/bin/nix_path.py	12
 pyright	infra/bin/snapshot-label-values	18
 pyright	infra/bin/stage-nixos-closures	16
 pyright	infra/nix/files/identity-regressions.py	86
-pyright	infra/nix/files/scheduled_dispatch.py	175
 pyright	scripts/adopt_ci_budgets.py	2
 pyright	scripts/agent_time.py	1
 pyright	scripts/aot-class-list.py	11

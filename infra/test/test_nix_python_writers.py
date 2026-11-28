@@ -28,6 +28,9 @@ REPO = INFRA.parent
 # writePython3Bin "<name>" { ... } <source expression ending in builtins.readFile <path>>
 WRITER = re.compile(r'writePython3Bin\s+"(?P<name>[^"]+)"(?P<body>.*?)builtins\.readFile\s+(?P<path>[^\s)]+)', re.S)
 IGNORE = re.compile(r'flakeIgnore\s*=\s*\[(?P<codes>[^\]]*)\]')
+# the one line a script keeps to find the modules beside it, which its nix expression swaps for the store copy
+SWAPPED = re.compile(r'^sys\.path\.insert\(0, os\.path\.join\(os\.path\.dirname\(os\.path\.realpath\(__file__\)\), '
+                     r'"(?P<folder>[^"]+)"\)\)$', re.M)
 # the line writePython3Bin puts first; flake8 reads any interpreter path alike
 BUILT_SHEBANG = "#! /nix/store/0000000000000000000000000000000-python3/bin/python3\n"
 
@@ -60,11 +63,12 @@ def built_text(writer: Writer) -> str:
 
 
 def module_files(writer: Writer) -> List[pathlib.Path]:
-    """The pieces a writer's script imports from beside it: `nix/files/<name with _>/*.py` (nixos-auto-apply.py's
-    `nixos_auto_apply/`), shipped as a store copy the one swapped line of the script points at. The build lints only
+    """The pieces a writer's script imports from beside it: the directory its `sys.path.insert` line names
+    (nixos-auto-apply.py's `nixos_auto_apply/`), shipped as a store copy that line is swapped for. The build lints only
     the script, so the pieces are linted here with the writer's ignores."""
-    folder = writer.source.parent / writer.source.stem.replace("-", "_")
-    return sorted(folder.glob("*.py")) if folder.is_dir() else []
+    named = SWAPPED.search(writer.source.read_text())
+    folder = writer.source.parent / named["folder"] if named else None
+    return sorted(folder.glob("*.py")) if folder and folder.is_dir() else []
 
 
 def flake8() -> str:
@@ -110,6 +114,7 @@ class NixPythonWritersTest(unittest.TestCase):
         flake8_dir = flake8()
         pieces = {w.name: module_files(w) for w in writers()}
         self.assertTrue(pieces["nixos-auto-apply"], "nixos_auto_apply/ holds the applier's modules")
+        self.assertTrue(pieces["scheduled-dispatch"], "scheduled_dispatch_parts/ holds the dispatcher's modules")
         for writer in writers():
             if not pieces[writer.name]:
                 continue
@@ -118,11 +123,11 @@ class NixPythonWritersTest(unittest.TestCase):
             self.assertEqual("", done.stdout + done.stderr, f"{writer.name}'s modules would not lint")
 
     def test_the_line_nix_swaps_for_the_store_copy_is_still_in_the_script(self) -> None:
-        swapped = ('sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), '
-                   '"nixos_auto_apply"))')
-        writer = next(w for w in writers() if w.name == "nixos-auto-apply")
-        self.assertEqual(1, writer.source.read_text().count(swapped))
-        self.assertEqual(1, writer.nix.read_text().count(swapped))
+        for name in ("nixos-auto-apply", "scheduled-dispatch"):
+            writer = next(w for w in writers() if w.name == name)
+            swapped = SWAPPED.search(writer.source.read_text())
+            self.assertIsNotNone(swapped, f"{name}'s script names the modules beside it")
+            self.assertEqual(1, writer.nix.read_text().count(swapped[0]), f"{writer.nix.name} swaps that line")
 
     def test_the_lint_sees_what_only_the_build_sees(self) -> None:
         # a file keeping its own shebang: under the prepended one it is line 2, a block comment (E265)

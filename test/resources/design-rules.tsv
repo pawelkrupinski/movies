@@ -123,6 +123,7 @@ adapter	js	infra/version-dashboard/src/mobile-release/android-signed.ts	process
 adapter	py	scripts/lib/cli/hook_event.py	clock
 adapter	py	scripts/claude-hooks/governed-kill-guard	env
 adapter	py	infra/nix/files/nixos_auto_apply/applier_clock.py	clock
+adapter	py	infra/nix/files/scheduled_dispatch_parts/dispatch_clock.py	clock
 #
 # Distance D: where abstractions exist (the owner, 2026-11-26): the Python library packages and the TypeScript
 # dashboard. Plain browser JS (web/src/main/assets/js) has none, so D measures nothing there: cycles and layers hold it.
@@ -186,6 +187,7 @@ layer	py	infra/bin	7	the fleet's operator tools, over the library
 layer	py	infra/nix/bin	7	the NixOS hosts' own tools
 layer	py	infra/nix/files	7	the files the NixOS hosts run
 layer	py	infra/nix/files/nixos_auto_apply	7	the modules nixos-auto-apply.py imports from beside it, on the host
+layer	py	infra/nix/files/scheduled_dispatch_parts	7	the modules scheduled_dispatch.py imports from beside it, on the host
 layer	py	android/scripts	7	the Android app's release tools, over the library
 layer	py	ios/scripts	7	the iOS app's release tools, over the library
 layer	py	scripts/local-mirror	7	the local prod mirror's tools, over the library
