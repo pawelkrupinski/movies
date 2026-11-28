@@ -244,9 +244,7 @@ effect	scripts/ci/runner_scheduler.py:network	2
 effect	scripts/ci/sbt_guard.py	1
 effect	scripts/ci/sbt_guard.py:files	1
 effect	scripts/ci/shard_tests.py:files	1
-effect	scripts/ci/shard_weights.py	1
-effect	scripts/ci/shard_weights.py:files	3
-effect	scripts/ci/shard_weights.py:network	2
+effect	scripts/ci/shard_weights.py:files	1
 effect	scripts/ci/start_mongo_replset.py	1
 effect	scripts/ci/start_mongo_replset.py:files	4
 effect	scripts/ci/stress_races.py	1
@@ -438,8 +436,6 @@ effect	scripts/local-mirror/service.py	3
 effect	scripts/local-mirror/service.py:files	6
 effect	scripts/local-mirror/start_local_mongo.py	2
 effect	scripts/local-mirror/start_local_mongo.py:files	3
-effect	scripts/mongo_grants.py	2
-effect	scripts/mongo_grants.py:files	2
 effect	scripts/mutation_check.py:files	3
 effect	scripts/ops/dumpheap.py	2
 effect	scripts/ops/dumpheap.py:files	5
@@ -487,8 +483,6 @@ effect	scripts/touched_tree_fixture.py	1
 effect	scripts/touched_tree_fixture.py:files	12
 effect	scripts/unmatched_census.py	2
 effect	scripts/unmatched_census.py:files	7
-effect	scripts/vault_env.py	2
-effect	scripts/vault_env.py:files	1
 effect	scripts/venue_replay.py:files	5
 effect	scripts/zinc_orphans.py:files	2
 effect	web/src/main/assets/js/i18n.js:storage	2
@@ -972,9 +966,6 @@ mixed	scripts/ci/sbt_guard.py:seconds_of	3
 mixed	scripts/ci/sbt_guard.py:wait_before_retry	6
 mixed	scripts/ci/scheduled_failure_issue.py:gh	4
 mixed	scripts/ci/shard_tests.py:read_weights	4
-mixed	scripts/ci/shard_weights.py:class_exists	3
-mixed	scripts/ci/shard_weights.py:fetch	3
-mixed	scripts/ci/shard_weights.py:read_rows	3
 mixed	scripts/ci/start_mongo_replset.py:Starter.__init__	10
 mixed	scripts/ci/start_mongo_replset.py:Starter.data_directory	7
 mixed	scripts/ci/start_mongo_replset.py:Starter.start	3
@@ -1437,8 +1428,6 @@ mixed	scripts/local-mirror/start_local_mongo.py:LocalMongo.primary	3
 mixed	scripts/local-mirror/start_local_mongo.py:LocalMongo.started	5
 mixed	scripts/local-mirror/start_local_mongo.py:installed_formula	6
 mixed	scripts/local-mirror/start_local_mongo.py:output	4
-mixed	scripts/mongo_grants.py:mongosh	4
-mixed	scripts/mongo_grants.py:required	4
 mixed	scripts/mutation_check.py:mutated	9
 mixed	scripts/mutation_check.py:newest_report	4
 mixed	scripts/ops/dumpheap.py:attach	9
@@ -1529,8 +1518,6 @@ mixed	scripts/touched_tree_fixture.py:TouchedTreeCase.tools_copy	4
 mixed	scripts/unmatched_census.py:read_patterns	5
 mixed	scripts/unmatched_census.py:read_rows	7
 mixed	scripts/unmatched_census.py:write_clusters	6
-mixed	scripts/vault_env.py:exec_under_vault	4
-mixed	scripts/vault_env.py:missing_specs	3
 mixed	scripts/venue_replay.py:Options.word	8
 mixed	scripts/venue_replay.py:Replay.prod	6
 mixed	scripts/venue_replay.py:Replay.replay	8
@@ -1595,6 +1582,6 @@ mixed	worker/src/main/scala/tools/HeapDumper.scala:HeapDumper.dump	3
 mixed	worker/src/main/scala/tools/HeapPressure.scala:HeapPressure.heldAfterCollection	3
 mixed	worker/src/main/scala/tools/ResidentialProxyProbe.scala:ResidentialProxyProbe.statusThrough	3
 fanout	scripts/design-rules/design_check.py	10
-distance	scripts/ci	0.5
+distance	scripts/ci	0.49
 distance	scripts/lib	0.72
 dircycle	scripts|scripts/ci	2
