@@ -319,7 +319,12 @@ def check_one(ratchet: Ratchet, current: Rows, ranges: List[str], renames: Renam
     return not failed
 
 
-def update_one(ratchet: Ratchet, current: Rows) -> None:
+def update_one(ratchet: Ratchet, current: Rows) -> bool:
+    """Write the baseline from the measure; whether it holds no rise past the file's old rows (False: each said)."""
+    try:
+        rises = growth(ratchet, _read_baseline(ratchet.baseline), current, Renames())
+    except FileNotFoundError:
+        rises = []
     lines = [ratchet.header]
     lines += [f"limit\t{kind}\t{limit_of(current, kind)}" for kind in ratchet.kinds]
     for kind in ratchet.kinds:
@@ -327,6 +332,7 @@ def update_one(ratchet: Ratchet, current: Rows) -> None:
     with open(ratchet.baseline, "w") as f:
         f.write("\n".join(lines) + "\n")
     print(f"{ratchet.name}: wrote {ratchet.baseline} -- a rise is committed with a `{ratchet.trailer}: <why>` trailer")
+    return not baseline_ratchet.say_rises(ratchet.name, ratchet.baseline, rises)
 
 
 def _parse_args(argv: List[str]) -> argparse.Namespace:
@@ -359,9 +365,7 @@ def _run(args: argparse.Namespace) -> int:
     current = _read_current(args.current)
     chosen = [RATCHETS[name] for name in (args.ratchet or sorted(RATCHETS))]
     if args.command == "update":
-        for ratchet in chosen:
-            update_one(ratchet, current)
-        return 0
+        return 0 if all([update_one(ratchet, current) for ratchet in chosen]) else 1
     return _check_chosen(chosen, current, args.range)
 
 

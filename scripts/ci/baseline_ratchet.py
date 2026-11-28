@@ -335,7 +335,26 @@ def check(spec: Spec, current: Rows, ranges: List[str]) -> bool:
     return ok
 
 
-def update(spec: Spec, current: Rows) -> None:
+def say_rises(tool: str, baseline: str, rises: List[str]) -> bool:
+    """Whether `update` recorded rises (each said: row, old value, new value). A rise lands only in a commit carrying
+    its kind's trailer, so `update` exits non-zero on one: the agent sees it now, not when the push refuses it."""
+    if not rises:
+        return False
+    print(f"{tool}: RISES RECORDED IN {baseline} ({len(rises)}) -- each needs its kind's trailer in the commit's final"
+          " block, or cut the code back and run update again:", file=sys.stderr)
+    print("\n".join(f"  - {r}" for r in rises), file=sys.stderr)
+    return True
+
+
+def update(spec: Spec, current: Rows) -> bool:
+    """Write the baseline from the measure; whether it holds no rise past the file's old rows (False: said, see say_rises)."""
+    old_text = ""
+    try:
+        with open(spec.baseline) as f:
+            old_text = f.read()
+    except FileNotFoundError:
+        pass
+    rises = growth(spec, spec.kinds, parse(old_text), current, Renames()) if old_text else []
     lines = [spec.header] + [f"limit\t{kind}\t{show(limit_of(current, kind))}" for kind in spec.kinds]
     for kind in spec.kinds:
         lines += [f"{kind}\t{key}\t{show(value)}" for key, value in sorted(of_kind(spec, current, kind).items())]
@@ -343,6 +362,7 @@ def update(spec: Spec, current: Rows) -> None:
     with open(spec.baseline, "w") as f:
         f.write("\n".join(lines) + "\n")
     print(f"{spec.tool}: wrote {spec.baseline} -- a rise is committed with its kind's trailer")
+    return not say_rises(spec.tool, spec.baseline, rises)
 
 
 def run(spec: Spec, command: str, current_file: str, ranges: List[str]) -> int:
@@ -351,8 +371,7 @@ def run(spec: Spec, command: str, current_file: str, ranges: List[str]) -> int:
         with open(current_file) as f:
             current = parse(f.read())
         if command == "update":
-            update(spec, current)
-            return 0
+            return 0 if update(spec, current) else 1
         return 0 if check(spec, current, ranges) else 1
     except (OSError, ValueError, subprocess.CalledProcessError) as e:
         print(f"{spec.tool}: {e}", file=sys.stderr)

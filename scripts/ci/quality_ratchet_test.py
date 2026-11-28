@@ -431,7 +431,9 @@ class QualityRatchetTest(unittest.TestCase):
 
     def test_update_writes_the_measured_rows_under_the_header(self):
         rc, out = self.run_tool("update", rows("cognitive\ta/src/main/scala/C.scala:C.h\t16"))
-        self.assertEqual(0, rc, out)
+        self.assertEqual(1, rc, out)  # a rise: written, but said and failed (below)
+        self.assertIn("RISES RECORDED", out)
+        self.assertIn("cognitive a/src/main/scala/C.scala:C.h raised <=15 -> 16", out)
         with open(os.path.join(self.repo, COMPLEXITY)) as f:
             written = f.read()
         self.assertTrue(written.startswith("# THE COMPLEXITY BASELINE"))
