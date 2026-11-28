@@ -27,3 +27,4 @@ project/
 scripts/lib/
 .github/order-independence-paths.txt
 scripts/ci/order-phases.sh
+scripts/ci/order_phases.py
