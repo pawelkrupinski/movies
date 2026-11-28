@@ -1,0 +1,11 @@
+# THE SHELL KEEPS (scripts/design-rules/shell_gate.py): shell tools past a migration limit that STAY shell, each with the
+# date it was kept and why (40+ characters). A kept script is still frozen (its rows only fall); it is left out of the
+# migration queue. A keep of a script now within every limit is stale, and refused until struck.
+# path	added	why
+scripts/hooks/pre-push	2026-11-28	git's hook entry point: it must say a usable error when the Python venv is broken (the analysis's phase 3 keeps a thin shell entry)
+scripts/hooks/pre-commit	2026-11-28	git's pre-commit entry point, run before any Python venv exists in a fresh clone
+scripts/floor-bash	2026-11-28	the bash 3.2 floor the shell self-tests run under: it goes with the last shell test, not before
+scripts/python-venv	2026-11-28	the bootstrap that builds the pinned venvs the Python checks need: it runs before they exist
+scripts/ci/bounded-step.sh	2026-11-28	workflow steps SOURCE it (`. scripts/ci/bounded-step.sh`) to run as a process group, so it must be shell
+infra/nix/files/heap-dumps.sh	2026-11-28	runs inside every kinowo pod's JVM image and on the node's timer, where no Python is installed (a writePython3Bin derivation first)
+infra/nix/files/registry-prune.sh	2026-11-28	a NixOS host entry point (modules/roles/registry.nix's daily unit), under the analysis's 120-line keep for host units

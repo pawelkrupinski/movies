@@ -15,7 +15,8 @@
 # The metrics: cognitive, cyclomatic, inner-defs (complexity-baseline.tsv); method-lines, file-lines (length-baseline.tsv);
 # copies (duplication-baseline.tsv); fanout, distance, cycle-edge (coupling-baseline.tsv); the JS/TS ratchet's, each
 # printed `js <kind>` (js-quality-baseline.tsv, scripts/ci/js_quality_ratchet.py: no move credit); the Swift and Kotlin
-# ratchets', `swift <kind>` / `kotlin <kind>` ({swift,kotlin}-quality-baseline.tsv, scripts/ci/mobile_quality_ratchet.py). Each changed row is marked
+# ratchets', `swift <kind>` / `kotlin <kind>` ({swift,kotlin}-quality-baseline.tsv, scripts/ci/mobile_quality_ratchet.py);
+# and the shell migration gate's shell-* rows (shell-baseline.tsv, scripts/design-rules/shell_gate.py). Each changed row is marked
 #   fell      its value fell
 #   rose      its value rose (or it moved and rose)
 #   new       a newly frozen piece (a row past the limit that the base did not have)
@@ -54,9 +55,10 @@ METRICS: List[Tuple[str, str, str]] = [
 ] + [
     (kind, mobile_quality_ratchet.BASELINES[language], language) for language in sorted(mobile_quality_ratchet.BASELINES)
     for kind in mobile_quality_ratchet.KINDS if kind != "clone-tokens"
-]
+] + [(kind, "test/resources/shell-baseline.tsv", "shell")  # the shell gate's (scripts/design-rules: above this layer)
+     for kind in ("shell-lines", "shell-decisions", "shell-function-lines", "shell-nesting")]
 PREFIXED = ("js", "swift", "kotlin")  # printed `<family> <kind>` (`js cognitive`): apart from the Scala rows of one kind
-PATH_KEYED = ("quality", "swift", "kotlin")  # rows keyed by source path: a renamed source's move credit
+PATH_KEYED = ("quality", "swift", "kotlin", "shell")  # rows keyed by source path: a renamed source's move credit
 SCALA = ("quality", "coupling")  # integer rows (quality_ratchet.parse); the others' are the engine's (baseline_ratchet)
 LIMIT_ZERO = ("copies", "cycle-edge")  # every row of these is over the limit (a clone group, a cycle edge)
 

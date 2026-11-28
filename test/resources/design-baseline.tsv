@@ -1441,7 +1441,7 @@ mixed	scripts/py-quality/report.py:python_files	5
 mixed	scripts/py-quality/report.py:read_paths	4
 mixed	scripts/py-quality/report.py:run	5
 mixed	scripts/ratchet_diff_cli.py:guard_checkout	4
-mixed	scripts/ratchet_diff_cli.py:measured_rows	6
+mixed	scripts/ratchet_diff_cli.py:measured_rows	5
 mixed	scripts/ratchet_diff_cli.py:run	6
 mixed	scripts/recording_diff.py:health	4
 mixed	scripts/reset_corpus.py:Reset.__init__	3
@@ -1562,5 +1562,5 @@ mixed	worker/src/main/scala/tools/HeapDumper.scala:HeapDumper.dump	3
 mixed	worker/src/main/scala/tools/HeapPressure.scala:HeapPressure.heldAfterCollection	3
 mixed	worker/src/main/scala/tools/ResidentialProxyProbe.scala:ResidentialProxyProbe.statusThrough	3
 fanout	scripts/design-rules/design_check.py	10
-distance	scripts/ci	0.48
+distance	scripts/ci	0.44
 dircycle	scripts|scripts/ci	2

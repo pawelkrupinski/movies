@@ -18,7 +18,8 @@ re-measured -- as two OTLP gauges per repo, language, family and measure, pushed
                    effect-clock-process-env (ONE row a module for those three: the baseline does not split them) or
                    effect-files / effect-storage / effect-network
   family migration the shell-to-Python MIGRATE list (scripts/shell_py_progress.py): migrate-done (retired counted
-                   in), migrate-left; from 2026-11-22, when the list was committed
+                   in), migrate-left; from 2026-11-22, when the list was committed; and the shell migration gate's
+                   frozen rows (shell-baseline.tsv, language shell: the queue a shell tool past a limit joins)
   family ceilings  agentctl's frozen `ctx` parameters and service locators (tests/test_no_new_ctx_parameters.py
                    CEILINGS, tests/test_no_service_locators.py FROZEN and READER_CEILINGS)
 
@@ -62,6 +63,7 @@ BATCH = 40  # revisions a POST
 
 FUNCTION_KINDS = ("cognitive", "cyclomatic", "inner-defs", "method-lines", "file-lines", "copies")
 MOBILE_KINDS = ("cognitive", "cyclomatic", "method-lines", "file-lines", "copies")  # lizard reads no inner defs
+SHELL_KINDS = ("shell-lines", "shell-decisions", "shell-function-lines", "shell-nesting")  # the migration queue
 NAMING = ("suffix", "abbreviation")
 EFFECTS = ("effect-clock-process-env", "effect-files", "effect-storage", "effect-network", "state", "import-io")
 MODULE_DESIGN = EFFECTS + ("fanout", "distance", "layer", "unplaced")
@@ -94,12 +96,14 @@ MOVIES = Repo("movies", (
     Baseline("test/resources/swift-quality-baseline.tsv", "quality", "swift"),
     Baseline("test/resources/kotlin-quality-baseline.tsv", "quality", "kotlin"),
     Baseline("test/resources/design-baseline.tsv", "design", ""),
+    Baseline("test/resources/shell-baseline.tsv", "migration", "shell"),
 ), {
     ("quality", "scala"): FUNCTION_KINDS + ("fanout", "distance", "cycle-edge", "datafanout", "databag"),
     ("quality", "py"): FUNCTION_KINDS + ("cycle", "pyright"),
     ("quality", "js"): FUNCTION_KINDS + ("cycle",),
     ("quality", "swift"): MOBILE_KINDS,
     ("quality", "kotlin"): MOBILE_KINDS,
+    ("migration", "shell"): SHELL_KINDS,
     ("design", "scala"): NAMING,
     ("design", "py"): NAMING + MODULE_DESIGN + ("dircycle", "databag", "datafanout"),
     ("design", "js"): NAMING + MODULE_DESIGN,

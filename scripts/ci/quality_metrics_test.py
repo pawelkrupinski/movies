@@ -185,9 +185,9 @@ class QualityMetricsTest(unittest.TestCase):
         for key, count in oracle.items():
             self.assertEqual(count, totals[key][0], key)
 
-    def test_the_swift_and_kotlin_baselines_are_sent(self) -> None:
+    def test_the_swift_kotlin_and_shell_baselines_are_sent(self) -> None:
         totals = qm.snapshot(qm.MOVIES, qm.shell_py_progress.Tree(ROOT, "HEAD"))
-        for key in (("quality", "swift", "cognitive"), ("quality", "kotlin", "copies")):
+        for key in (("quality", "swift", "cognitive"), ("quality", "kotlin", "copies"), ("migration", "shell", "shell-decisions")):
             self.assertIn(key, totals)
 
 if __name__ == "__main__":

@@ -90,6 +90,14 @@ def is_shell_path(path: str, first_line: FirstLine) -> bool:
     return "." not in basename(path) and bool(SHELL_SHEBANG.search(first_line(path)))
 
 
+TOOL_ROOTS = ("scripts/", "infra/", ".github/", "android/scripts/", "ios/scripts/")
+
+
+def is_tool_name(path: str) -> bool:
+    """An extension-less file where the tools live: a shell tool, or one migrated from it (its frozen shell rows gone)."""
+    return path.startswith(TOOL_ROOTS) and "." not in basename(path) and "/src/" not in path
+
+
 def identity_change(paths: Iterable[str]) -> List[str]:
     """`identity` when one of the paths can move takes."""
     return ["identity"] if any(is_take_path(p) for p in paths) else []

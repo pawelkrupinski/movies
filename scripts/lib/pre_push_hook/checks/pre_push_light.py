@@ -434,6 +434,16 @@ def mobilequality(c: Check) -> int:
     return int(c.run(["scripts/mobile-quality-report", "--check", *c.range_args()], out=STDERR) != 0)
 
 
+def shellgate(c: Check) -> int:
+    # THE SHELL MIGRATION GATE: a shell tool past a limit is migrated to Python, never admitted
+    if not c.need("shellgate", "python3", PYTHON_FIX):
+        return 1
+    if not c.holds("-f", "scripts/design-rules/shell_gate.py"):
+        c.say.warn("shellgate: this tree has no scripts/design-rules/shell_gate.py: nothing to gate")
+        return 0
+    return int(c.run(["python3", "scripts/design-rules/shell_gate.py", "check", *c.range_args()], out=STDERR) != 0)
+
+
 def ios(c: Check) -> int:
     return c.run(["scripts/ios-compile-check.sh"])
 
@@ -453,7 +463,7 @@ CHECKS: Dict[str, Light] = {
     "schedules": python_tool("schedules", "infra/nix/files/scheduled_dispatch.py", "check"),
     "allowlists": commit_rules("allowlists"), "driftguards": commit_rules("driftguards"),
     "puremove": puremove, "stampcarry": stampcarry, "judgements": judgements, "ios": ios,
-    "mobilequality": mobilequality,
+    "mobilequality": mobilequality, "shellgate": shellgate,
 }
 
 

@@ -39,6 +39,14 @@ limit	data-methods	4	scala py
 limit	data-decisions	9	scala py
 limit	databag	9	scala py
 limit	datafanout	15	scala py
+# THE SHELL MIGRATION GATE (the owner, 2026-11-28: "bash gets migrated to python whenever it gets complex enough";
+# scripts/design-rules/shell_gate.py): bash is measured, never ratcheted -- a shell tool past one of these is migrated.
+# The equivalents of the limits above: a file's code lines (the analysis's 40-150 "moderate" band's top), a body's
+# decisions (cyclomatic), a function's code lines (method-lines), its deepest block nest (depth 4: cognitive 1+2+3+4).
+limit	shell-lines	150	sh
+limit	shell-decisions	10	sh
+limit	shell-function-lines	50	sh
+limit	shell-nesting	4	sh
 #
 # Naming (CLAUDE.md: "Never suffix a class with Impl"; Manager/Handler/Util/Helper/Processor are a smell; "no
 # abbreviations in names").

@@ -24,6 +24,7 @@ COUPLING = "test/resources/coupling-baseline.tsv"
 JS = "test/resources/js-quality-baseline.tsv"
 JS_LIMITS = "limit\tcognitive\t10\nlimit\tcopies\t0\n"
 SWIFT = "test/resources/swift-quality-baseline.tsv"
+SHELL = "test/resources/shell-baseline.tsv"
 OLD_SRC = "web/src/main/scala/services/Old.scala"
 NEW_SRC = "web/src/main/scala/services/moved/Old.scala"
 UNTOUCHED_SRC = "web/src/main/scala/services/Untouched.scala"
@@ -48,6 +49,7 @@ BASE_FILES = {
     UNTOUCHED_SRC: "package services\n\nobject Untouched {\n  val table: Seq[Int] = Seq(1)\n}\n",
     JS: JS_LIMITS + "cognitive\tweb/src/main/assets/js/a.js:render\t15\ncopies\tweb/src/main/assets/js/a.js\t2\n",
     SWIFT: JS_LIMITS + "cognitive\tios/Kinowo/A.swift:body\t14\n",
+    SHELL: "limit\tshell-lines\t150\nshell-lines\tscripts/old.sh\t200\n",
 }
 HEAD_FILES = {
     COMPLEXITY: complexity(f"cognitive\t{NEW_SRC}:Old.run\t30", "cognitive\tweb/src/main/scala/A.scala:A.fall\t18",
@@ -59,6 +61,7 @@ HEAD_FILES = {
     NEW_SRC: "package services.moved\n\nobject Old {\n" + SOURCE + "}\n",
     JS: JS_LIMITS + "cognitive\tweb/src/main/assets/js/a.js:render\t12\ncopies\tweb/src/main/assets/js/a.js\t3\n",
     SWIFT: JS_LIMITS + "cognitive\tios/Kinowo/A.swift:body\t11\n",
+    SHELL: "limit\tshell-lines\t150\n",
 }
 
 
@@ -117,6 +120,8 @@ class RatchetDiffTest(unittest.TestCase):
         self.assertEqual(["15", "12", "fell"], rows[("js cognitive", "web/src/main/assets/js/a.js:render")])
         self.assertEqual(["2", "3", "rose"], rows[("js copies", "web/src/main/assets/js/a.js")])
         self.assertEqual(["14", "11", "fell"], rows[("swift cognitive", "ios/Kinowo/A.swift:body")])
+        self.assertEqual(["200", "-", "removed (within the limit)"], rows[("shell-lines", "scripts/old.sh")],
+                         "a shell tool migrated (or cut under the gate) leaves the queue")
 
     def test_totals_count_rows_still_over_the_limit(self):
         out = self.run_tool("--head", self.head, "--tsv")

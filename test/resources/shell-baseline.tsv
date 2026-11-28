@@ -1,0 +1,38 @@
+# THE SHELL BASELINE (scripts/design-rules/shell_gate.py update writes it; the pre-push `shellgate` check holds every
+# push touching a shell tool to it). Every shell tool past a limit of test/resources/design-rules.tsv, frozen -- the
+# migration queue (shell_gate.py queue). A row ONLY falls: a new row or a rise is refused whatever a trailer says
+# (migrate the script to Python instead), and a fall is recorded in the push making it.
+limit	shell-lines	150
+limit	shell-decisions	10
+limit	shell-function-lines	50
+limit	shell-nesting	4
+shell-lines	scripts/jvm-gate.sh	350
+shell-decisions	.github/scripts/fixture-server.sh:<top>	14
+shell-decisions	infra/bin/propose-pr:<top>	12
+shell-decisions	infra/bin/push-gh-secrets:<top>	14
+shell-decisions	infra/bin/push-k8s-secrets:<top>	15
+shell-decisions	infra/nix/files/heap-dumps.sh:<top>	27
+shell-decisions	infra/nix/files/registry-prune.sh:<top>	15
+shell-decisions	scripts/ci/bounded-step.sh:<top>	11
+shell-decisions	scripts/ci/bounded-step.sh:bounded_step_reap	29
+shell-decisions	scripts/ci/hook-beside.sh:<top>	11
+shell-decisions	scripts/ci/machine-id.sh:main	12
+shell-decisions	scripts/ci/order-phases.sh:<top>	12
+shell-decisions	scripts/ci/seed-sbt-runner.sh:<top>	12
+shell-decisions	scripts/ci/stop-stray-sbt.sh:<top>	13
+shell-decisions	scripts/ci/takes-skip-shadow-report.sh:<top>	14
+shell-decisions	scripts/floor-bash:<top>	20
+shell-decisions	scripts/gov-run:<top>	14
+shell-decisions	scripts/hooks/pre-commit:<top>	12
+shell-decisions	scripts/hooks/pre-push:<top>	24
+shell-decisions	scripts/jvm-gate.sh:jvm_slot_take	14
+shell-decisions	scripts/local-mirror/freshness:<top>	15
+shell-decisions	scripts/mobile-release.sh:<top>	12
+shell-decisions	scripts/own-mongod.sh:own_mongod_start	12
+shell-decisions	scripts/python-venv:<top>	13
+shell-decisions	scripts/recording-diff:<top>	19
+shell-decisions	scripts/review-commit:<top>	12
+shell-decisions	scripts/unit-changed:<top>	11
+shell-decisions	scripts/wait-for:<top>	28
+shell-function-lines	scripts/ci/bounded-step.sh:bounded_step_reap	54
+shell-nesting	infra/nix/files/heap-dumps.sh:<top>	6

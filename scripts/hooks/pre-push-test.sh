@@ -60,11 +60,11 @@ check "the external scheduler's generated schedule runs the schedules check" "sc
 check "a composite action runs actionlint (its run blocks' shellcheck), the self-tests, and the lint specs" "scripttests actionlint sbt" \
   "$(plan .github/actions/convergence-setup/action.yml)"
 check "the local-tests list selects shellcheck by its directory (which skips it) and the lint specs" "scripttests shellcheck sbt" "$(plan scripts/hooks/local-tests.txt)"
-check "a shell script runs its self-tests, shellcheck, and the lint specs" "scripttests shellcheck sbt" "$(plan scripts/ci/order-seed.sh)"
+check "a shell script runs the shell gate, its self-tests, shellcheck, and the lint specs" "shellgate scripttests shellcheck sbt" "$(plan scripts/ci/order-seed.sh)"
 # a tool with no extension is shellchecked by its shell shebang: 50 under scripts/ (sbt-warm, gitops-specs, ...) never
 # were, and sbt-warm's new SC2046 (d56231908, 2026-11-17) landed unseen
-check "a bash tool with no extension runs shellcheck too" "scripttests shellcheck sbt" "$(plan scripts/gov-run)"
-check "...but not a Python tool with no extension (the Python quality ratchet does)" "pyquality scripttests sbt" "$(plan scripts/identity-ratchet-report)"
+check "a bash tool with no extension runs shellcheck too" "shellgate scripttests shellcheck sbt" "$(plan scripts/gov-run)"
+check "...but not a Python tool with no extension (the Python quality ratchet does; the shell gate sees a migration drop its rows)" "pyquality shellgate scripttests sbt" "$(plan scripts/identity-ratchet-report)"
 check "the gating-checks registry runs its lint, and the lint specs" "newchecks sbt" "$(plan .github/gating-checks.tsv)"
 # THE HEAVY ROWS: Main's integration-test rows and e2e (corpus), in the landing check only (PREPUSH_HEAVY_ROWS=1); e2e (rest)
 # runs after landing, on Main (the owner, 2026-11-17, "B1")
@@ -85,18 +85,20 @@ check "...an HTTP fetcher left in common the identity row too, as any common sou
 check "...a base helper the identity row too: the resolver reads base's text folds" "itrest itidentity" "$(heavy base/src/main/scala/tools/TextNormalization.scala)"
 check "...a docs change none" "" "$(heavy docs/landing-process.md)"
 check "...a script no row runs none" "" "$(heavy scripts/ci/order-seed.sh)"
-check "the hook itself runs shellcheck and the self-tests, its own among them" "newchecks scripttests shellcheck sbt" "$(plan scripts/hooks/pre-push)"
-check "the hooks-path helper and install-hooks.sh, both exercised here, run the self-tests" "scripttests shellcheck sbt scripttests shellcheck sbt" \
+check "the hook itself runs shellcheck and the self-tests, its own among them" "newchecks shellgate scripttests shellcheck sbt" "$(plan scripts/hooks/pre-push)"
+check "the hooks-path helper and install-hooks.sh, both exercised here, run the self-tests" "shellgate scripttests shellcheck sbt shellgate scripttests shellcheck sbt" \
   "$(plan scripts/hooks-path.sh) $(plan scripts/install-hooks.sh)"
 check "an iOS view runs the Swift ratchet and the iOS compile check" "mobilequality ios" "$(plan ios/Kinowo/Views/FilmCard.swift)"
 check "an Android-only change runs only the Kotlin ratchet" "mobilequality" "$(plan android/app/src/main/java/pl/kinowo/ui/X.kt)"
-check "a mobile or fleet script runs the self-tests" "scripttests shellcheck|scripttests shellcheck ios|scripttests" \
+check "a mobile or fleet script runs the shell gate and the self-tests" "shellgate scripttests shellcheck|shellgate scripttests shellcheck ios|shellgate scripttests" \
   "$(plan android/scripts/store-graphics.sh)|$(plan ios/scripts/x.sh)|$(plan infra/bin/x)"
 check "the Swift and Kotlin ratchets' baselines and measure run them" "mobilequality|mobilequality|mobilequality" \
   "$(plan test/resources/swift-quality-baseline.tsv)|$(plan test/resources/kotlin-quality-baseline.tsv)|$(plan scripts/ci/mobile_quality_measure.py | tr ' ' '\n' | grep -x mobilequality)"
+check "the shell gate's baseline and keeps run it" "shellgate|shellgate" \
+  "$(plan test/resources/shell-baseline.tsv)|$(plan test/resources/shell-keeps.tsv)"
 check "a roster generator runs the drift check and its self-tests" "drift scripttests" "$(plan data/uk/scripts/build_pages.py)"
 check "docs run nothing" "" "$(plan docs/readme.md README.md)"
-check "checks come out once each, in run order" "newchecks schedules driftguards eslint jsquality snapshot scripttests actionlint shellcheck sbt" \
+check "checks come out once each, in run order" "newchecks schedules driftguards eslint jsquality shellgate snapshot scripttests actionlint shellcheck sbt" \
   "$(plan web/src/main/assets/js/a.js build.sbt scripts/x.sh .github/workflows/a.yml worker/src/main/scala/A.scala test/resources/fixtures/08-06-2026/y)"
 
 check "the drift check's Python modules run the drift guards" "driftguards" \

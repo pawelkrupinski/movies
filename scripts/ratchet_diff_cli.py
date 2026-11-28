@@ -3,7 +3,7 @@
 THE RATCHET DIFF (CLAUDE.md, the coupling and code-quality ratchets): every frozen row that changed between two refs --
 complexity (cognitive, cyclomatic, inner-defs), length (method, file), duplication, fan-out, package D, cycles, and the
 JS/TS ratchet's rows (`js <kind>`, test/resources/js-quality-baseline.tsv), the Swift and Kotlin ratchets' (`swift <kind>`,
-`kotlin <kind>`) -- as a
+`kotlin <kind>`) and the shell migration gate's (`shell-*`, test/resources/shell-baseline.tsv) -- as a
 before -> after table marked fell / rose / new / measured / removed / moved, then per metric the totals and how many rows are
 still over the limit. A lane's report pastes this, never numbers written by hand.
 

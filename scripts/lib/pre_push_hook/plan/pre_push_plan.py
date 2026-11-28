@@ -12,7 +12,7 @@ from pre_push_hook.plan import pre_push_paths as paths_of
 from pre_push_hook.plan.pre_push_paths import FirstLine, matches
 
 ORDER = ("judgements", "allowlists", "newchecks", "schedules", "driftguards", "eslint", "jsquality", "pyquality",
-         "mobilequality", "drift", "snapshot", "dashboards", "metricalerts", "scripttests", "actionlint", "shellcheck", "sbt",
+         "mobilequality", "shellgate", "drift", "snapshot", "dashboards", "metricalerts", "scripttests", "actionlint", "shellcheck", "sbt",
          "flipbacklog", "stampcarry", "identity", "ios")
 
 
@@ -40,6 +40,9 @@ BY_PATTERN = (
                        "scripts/mobile-quality-report", "scripts/lizard-requirements.txt", "scripts/python-venv",
                        "scripts/lib/code_tools/clone_groups.py", "scripts/lib/code_tools/quality_report.py",
                        "scripts/ci/baseline_ratchet.py", "test/resources/design-rules.tsv")),
+    ("shellgate", ("test/resources/shell-baseline.tsv", "test/resources/shell-keeps.tsv",
+                   "scripts/design-rules/shell_gate.py", "scripts/design-rules/shell_measure.py",
+                   "scripts/ci/baseline_ratchet.py", "test/resources/design-rules.tsv")),
     ("eslint", ("web/src/main/assets/js/*.js", "web/src/page/resources/*.js", "eslint.config.js", "eslint-rules/*.js",
                 "package.json", "package-lock.json", "page-tests-playwright/tests/*.ts",
                 "page-tests-playwright/lint-flake-patterns*.mjs")),
@@ -98,6 +101,8 @@ RULES: Sequence[Tuple[str, Rule]] = (
     ("scripttests", lambda p, t: matches(p, t.script_test_reads)),
     ("allowlists", lambda p, t: p in t.allow_lists),
     ("shellcheck", lambda p, t: paths_of.is_shell_path(p, t.first_line)),
+    # a shell tool, or an extension-less one that may have been (a migration drops its frozen rows: a fall to record)
+    ("shellgate", lambda p, _t: p.endswith((".sh", ".bash")) or paths_of.is_tool_name(p)),
     ("identity", lambda p, _t: paths_of.is_identity_path(p) or paths_of.is_identity_reach_path(p)),
     ("driftguards", lambda p, _t: paths_of.is_drift_path(p)),
 )

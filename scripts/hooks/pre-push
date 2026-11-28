@@ -38,7 +38,11 @@
 #                 android/ module's src/main|tuning|noTuning) to test/resources/{swift,kotlin}-quality-baseline.tsv under
 #                 the kinds' trailers. Its venv: scripts/python-venv, once, in ~/.cache/kinowo-python-venvs (a venv that
 #                 cannot be built BLOCKS)
-#   Every ratchet (jsquality, pyquality, mobilequality, sbt's quality and coupling, the design rules) also
+#   `shellgate`   THE SHELL MIGRATION GATE (CLAUDE.md, "Design rules"), on a change to a shell tool or an extension-less
+#                 one: scripts/design-rules/shell_gate.py check -- a shell tool past a limit of design-rules.tsv (150 code
+#                 lines, 10 decisions a body, a function of 50 lines, nesting 4) is migrated to Python, never admitted;
+#                 today's are frozen in test/resources/shell-baseline.tsv, rows that only fall (no trailer raises one)
+#   Every ratchet (jsquality, pyquality, mobilequality, shellgate, sbt's quality and coupling, the design rules) also
 #                 REFUSES A FALL ITS BASELINE DOES NOT RECORD (THE FALL LOCK, baseline_ratchet.refused_falls): the
 #                 refusal names the update command; a fall needs no trailer
 #   `drift`       the generated roster chain (scripts/ci/generated-artefacts-drift.sh)
