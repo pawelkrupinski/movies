@@ -26,82 +26,21 @@ import argparse
 import gzip
 import json
 import os
-import re
 import sys
-import unicodedata
 from collections import Counter, defaultdict
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "ci"))
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(HERE, "ci"))
+sys.path.insert(0, HERE)
 import recording_health  # noqa: E402  (scripts/ci/recording_health.py)
+from title_markers import marker_spellings  # noqa: E402
+from title_respelling import respelling, strip_accents  # noqa: E402
 
-TRUNCATION_MIN = 20          # a shorter title below this many letters is another title, not a truncation of the longer
 DETAIL_BEFORE, DETAIL_AFTER, DETAIL_MIN = 0.5, 0.1, 3
 ORIGIN_SHARE_MOVE = 0.2      # a refusal share that moved this much between the runs is reported
 FIELD_MOVE_MIN = 2           # a venue's field change needs this many listings to be printed
 
-# Known title markers: each is a family of spellings the title rules have to read. `follow`: the marker word stands
-# alone and its qualifier is the next word ("Sneak Over", "Pokaz przyjazny"), so the spelling takes the next word too.
-MARKERS = [
-    ("sneak", re.compile(r"sneak", re.I), True),
-    ("preview", re.compile(r"preview|vorpremiere|przedpremier|avant-?premi", re.I), True),
-    ("pokaz", re.compile(r"pokaz", re.I), True),
-    ("double bill", re.compile(r"double[\s_-]*(?:bill|feature)|doppel(?:vorstellung|programm)|podw[oó]jn\w*", re.I), False),
-    ("certificate", re.compile(r"[(\[](?:U|PG|12A?|15|18|R18|PG-13|NC-17|R|FSK ?\d{1,2})[)\]]", re.I), False),
-]
-
-
-# ---------------------------------------------------------------------------------------------------------------------
-# Re-spellings
-
-def _ws(s):
-    return re.sub(r"\s+", " ", s).strip()
-
-
-def _case(s):
-    return s.casefold()
-
-
-def _accents(s):
-    return "".join(c for c in unicodedata.normalize("NFKD", s) if not unicodedata.combining(c))
-
-
-def _punct(s):
-    # a mark at either end leaves no space there: only one inside the title is a word break
-    return re.sub(r"[^\w\s]|_", " ", s).strip()
-
-
-# applied in this order, so the whitespace a removed punctuation mark leaves is collapsed
-_TRANSFORMS = [("case", _case), ("accents", _accents), ("punctuation", _punct), ("whitespace", _ws)]
-_ORDER = ["whitespace", "case", "accents", "punctuation"]
-
-
-def _canonical(s, skip=None):
-    for name, transform in _TRANSFORMS:
-        if name != skip:
-            s = transform(s)
-    return s
-
-
-def _related(a, b, truncation):
-    if a == b:
-        return True
-    if not truncation:
-        return False
-    short, long_ = sorted((a, b), key=len)
-    return len(short.replace(" ", "")) >= TRUNCATION_MIN and long_.startswith(short)
-
-
-def respelling(a, b):
-    """How title `b` re-spells title `a`: the kinds of difference (whitespace, case, accents, punctuation, truncation),
-    each one needed — without it the two are not the same title; None when they are two titles."""
-    if a == b:
-        return None
-    ca, cb = _canonical(a), _canonical(b)
-    truncation = ca != cb
-    if not _related(ca, cb, truncation):
-        return None
-    kinds = [kind for kind in _ORDER if not _related(_canonical(a, kind), _canonical(b, kind), truncation)]
-    return kinds + (["truncation"] if truncation else [])
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -178,37 +117,6 @@ def _detail_share(films):
     return sum(1 for e in films.values() if any(FIELDS[f](e) for f in DETAIL_FIELDS)) / len(films)
 
 
-def _spellings(title, marker, follow):
-    """The marker's spellings in a title: the word holding the match, and its next word when the marker stands alone."""
-    words = title.split()
-    found = []
-    for i, word in enumerate(words):
-        match = marker.search(word)
-        if not match:
-            continue
-        spelling = word
-        if follow and match.group(0) == word and i + 1 < len(words):
-            spelling = f"{word} {words[i + 1]}"
-        found.append(spelling.casefold())
-    if not found:   # a marker spanning words ("Double Bill"): the words it spans
-        for match in marker.finditer(title):
-            start = title.rfind(" ", 0, match.start()) + 1
-            end = title.find(" ", match.end())
-            found.append(title[start:end if end >= 0 else len(title)].casefold())
-    return found
-
-
-def _marker_spellings(venues):
-    """(marker, spelling) → [(venue, title)...]"""
-    out = defaultdict(list)
-    for venue, films in venues.items():
-        for title in films:
-            for name, marker, follow in MARKERS:
-                for spelling in _spellings(title, marker, follow):
-                    out[(name, spelling)].append((venue, title))
-    return out
-
-
 def _showtimes(entry):
     return frozenset(s["dateTime"] for s in entry.get("showtimes") or ())
 
@@ -258,8 +166,8 @@ def compare_corpus(a, b, venue_filter=None):
             detail_vanished.append((venue, round(before, 2), round(after, 2), len(fb)))
         if len(fb) >= DETAIL_MIN and before <= DETAIL_AFTER and after >= DETAIL_BEFORE:
             detail_appeared.append((venue, round(before, 2), round(after, 2), len(fb)))
-    sa = _marker_spellings({v: f for v, f in va.items() if keep(v)})
-    sb = _marker_spellings({v: f for v, f in vb.items() if keep(v)})
+    sa = marker_spellings({v: f for v, f in va.items() if keep(v)})
+    sb = marker_spellings({v: f for v, f in vb.items() if keep(v)})
     return {
         "venues": venues,
         "venues_added": sorted(v for v in set(vb) - set(va) if keep(v)),
@@ -274,7 +182,7 @@ def compare_corpus(a, b, venue_filter=None):
 
 
 def _fold(s):
-    return _accents(s).casefold()
+    return strip_accents(s).casefold()
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -331,175 +239,214 @@ def _value(field, v):
     return ", ".join(v) if isinstance(v, tuple) else str(v)
 
 
-def listing_view(a, b, venue_filter, title_filter, labels):
+def _venue_heading(venue: str, in_a: bool, in_b: bool, labels: "Tuple[str, str]") -> str:
+    return f"-- {venue}" + ("" if in_a else f" (not in {labels[0]})") + ("" if in_b else f" (not in {labels[1]})")
+
+
+def _pair_head(old: str, new: str, kinds: "Optional[Union[str, List[str]]]") -> str:
+    if kinds is None:
+        return f"  {_quote(old)}: in both, spelled alike"
+    if kinds == "retitled":
+        return f"  {_quote(old)} → {_quote(new)}: RE-TITLED (same showtimes)"
+    return f"  {_quote(old)} → {_quote(new)}: RE-SPELLED ({', '.join(kinds)})"
+
+
+def _pair_line(fa: "Dict[str, Any]", fb: "Dict[str, Any]", old: str, new: str, kinds: "Optional[Union[str, List[str]]]") -> str:
+    """One listing in both runs: how it is billed and each field that moved, value by value."""
+    va, vb = _field_values(fa[old]), _field_values(fb[new])
+    moved = [f"{f} {_value(f, va.get(f))} → {_value(f, vb.get(f))}" for f in sorted(set(va) | set(vb))
+             if (va.get(f) or vb.get(f)) and not (va.get(f) and vb.get(f) and _same(f, va[f], vb[f]))]
+    return _pair_head(old, new, kinds) + (", fields alike" if not moved else "; " + "; ".join(moved))
+
+
+def _own_pairs(fb: "Dict[str, Any]", mine: "Set[str]", ta: "List[str]", respelled: "List[Any]",
+               retitled: "List[Any]") -> "List[Tuple[str, str, Optional[Union[str, List[str]]]]]":
+    """The listings of one venue in both runs that the filter names: alike, re-spelled, or re-titled."""
+    return ([(t, t, None) for t in ta if t in fb] + [p for p in respelled if p[0] in mine or p[1] in mine]
+            + [(o, n, "retitled") for o, n in retitled if o in mine or n in mine])
+
+
+def _venue_listing_lines(fa: "Dict[str, Any]", fb: "Dict[str, Any]", wanted: str, labels: "Tuple[str, str]") -> "List[str]":
+    """The listings of one venue whose title holds `wanted`: billed alike, re-spelled, re-titled or in one run only."""
+    ta = sorted(t for t in fa if wanted in _fold(t))
+    mine = set(ta) | {t for t in fb if wanted in _fold(t)}
+    # paired against every listing of the venue: a title the filter matches in one run only can be re-titled
+    respelled, retitled, only_a, only_b = pair_listings(fa, fb, set(fa) - set(fb), set(fb) - set(fa))
+    lines = [_pair_line(fa, fb, old, new, kinds) for old, new, kinds in _own_pairs(fb, mine, ta, respelled, retitled)]
+    lines += [f"  {_quote(t)}: only in {labels[0]}" for t in only_a if t in mine]
+    return lines + [f"  {_quote(t)}: only in {labels[1]}" for t in only_b if t in mine]
+
+
+def listing_view(a: "List[Dict[str, Any]]", b: "List[Dict[str, Any]]", venue_filter: "Optional[str]", title_filter: str,
+                 labels: "Tuple[str, str]") -> "List[str]":
     """Every listing whose title holds `title_filter` (case and accents aside), at the venues matching `venue_filter`:
     billed alike in both, re-spelled, or in one run only, and each field that moved, value by value."""
     va, vb = _venues(a), _venues(b)
-    wanted = _fold(title_filter)
-    lines = []
+    lines: "List[str]" = []
     for venue in sorted(set(va) | set(vb)):
         if venue_filter and _fold(venue_filter) not in _fold(venue):
             continue
-        fa, fb = va.get(venue, {}), vb.get(venue, {})
-        ta = sorted(t for t in fa if wanted in _fold(t))
-        tb = sorted(t for t in fb if wanted in _fold(t))
-        if not ta and not tb:
-            continue
-        lines.append(f"-- {venue}" + ("" if venue in va else f" (not in {labels[0]})") + ("" if venue in vb else f" (not in {labels[1]})"))
-        # paired against every listing of the venue: a title the filter matches in one run only can be re-titled
-        respelled, retitled, only_a, only_b = pair_listings(fa, fb, set(fa) - set(fb), set(fb) - set(fa))
-        mine = set(ta) | set(tb)
-        pairs = ([(t, t, None) for t in ta if t in fb] + [p for p in respelled if p[0] in mine or p[1] in mine]
-                 + [(o, n, "retitled") for o, n in retitled if o in mine or n in mine])
-        only_a = [t for t in only_a if t in mine]
-        only_b = [t for t in only_b if t in mine]
-        for old, new, kinds in pairs:
-            va_, vb_ = _field_values(fa[old]), _field_values(fb[new])
-            moved = [f"{f} {_value(f, va_.get(f))} → {_value(f, vb_.get(f))}" for f in sorted(set(va_) | set(vb_))
-                     if (va_.get(f) or vb_.get(f)) and not (va_.get(f) and vb_.get(f) and _same(f, va_[f], vb_[f]))]
-            head = (f"  {_quote(old)}: in both, spelled alike" if kinds is None
-                    else f"  {_quote(old)} → {_quote(new)}: RE-TITLED (same showtimes)" if kinds == "retitled"
-                    else f"  {_quote(old)} → {_quote(new)}: RE-SPELLED ({', '.join(kinds)})")
-            lines.append(head + (", fields alike" if not moved else "; " + "; ".join(moved)))
-        lines.extend(f"  {_quote(t)}: only in {labels[0]}" for t in only_a)
-        lines.extend(f"  {_quote(t)}: only in {labels[1]}" for t in only_b)
+        found = _venue_listing_lines(va.get(venue, {}), vb.get(venue, {}), _fold(title_filter), labels)
+        if found:
+            lines += [_venue_heading(venue, venue in va, venue in vb, labels)] + found
     return lines or [f"no listing billed with {_quote(title_filter)}" + (f" at {_quote(venue_filter)}" if venue_filter else "")]
 
 
-def report(cc, a, b, origins_a, origins_b, venue_filter=None, limit=15, coverage=None, labels=("A", "B"),
-           title_filter=None):
+def _summary_lines(result: "Dict[str, Any]", respelled: "List[Any]", retitled: "List[Any]") -> "List[str]":
+    venues = result["venues"]
+    kinds = Counter(k for *_, ks in respelled for k in ks)
+    return [f"listings: {sum(len(v['added']) for v in venues.values())} added, {sum(len(v['lost']) for v in venues.values())} lost, "
+            f"{len(respelled)} RE-SPELLED" + (f" ({', '.join(f'{k} {n}' for k, n in kinds.most_common())})" if kinds else "")
+            + f", {len(retitled)} RE-TITLED (same showtimes) at {len(venues)} venues in both; venues added "
+            f"{len(result['venues_added'])}, lost {len(result['venues_lost'])}"]
+
+
+def _coverage_lines(coverage: "Optional[Tuple[Dict[str, Any], Dict[str, Any]]]") -> "List[str]":
+    if not coverage:
+        return []
+    return ["prod coverage: " + ", ".join(f"{k} {coverage[0].get(k)}→{coverage[1].get(k)}"
+                                          for k in sorted(set(coverage[0]) | set(coverage[1]))
+                                          if k != "recordedAt" and coverage[0].get(k) != coverage[1].get(k))]
+
+
+def _verdict_lines(result: "Dict[str, Any]", respelled: "List[Any]", retitled: "List[Any]", origins: "Optional[List[Any]]") -> "List[str]":
+    moved = [(respelled, "{} re-spelled listings"), (retitled, "{} re-titled listings"),
+             (result["detail_vanished"], "detail pages vanished at {} venues"), (origins, "{} origins' refusals moved"),
+             (result["markers"]["new"], "{} new marker spellings")]
+    verdicts = [text.format(len(found)) for found, text in moved if found]
+    if verdicts:
+        return ["NEW DATA: " + "; ".join(verdicts)]
+    return ["no re-spelling, vanished detail, origin or marker change: a moved take is more likely the CODE's"]
+
+
+def _respelled_lines(respelled: "List[Any]", limit: int) -> "List[str]":
+    if not respelled:
+        return []
+    lines = ["", "RE-SPELLED (same listing, another spelling):"]
+    groups: "Dict[Any, List[str]]" = defaultdict(list)
+    for venue, old, new, ks in respelled:
+        groups[(old, new, tuple(ks))].append(venue)
+    for (old, new, ks), at in sorted(groups.items(), key=lambda kv: -len(kv[1]))[:limit]:
+        lines += [f"  RE-SPELLED ({', '.join(ks)}) at {len(at)} venue(s) [{_names(at, 3)}]", f"      {_quote(old)}", f"    → {_quote(new)}"]
+    return lines + ([f"  … {len(groups) - limit} more"] if len(groups) > limit else [])
+
+
+def _retitled_lines(retitled: "List[Any]", limit: int) -> "List[str]":
+    if not retitled:
+        return []
+    lines = ["", "RE-TITLED (the same showtimes under another title):"]
+    lines += [f"  {venue}: {_quote(old)} → {_quote(new)}" for venue, old, new in retitled[:limit]]
+    return lines + ([f"  … {len(retitled) - limit} more"] if len(retitled) > limit else [])
+
+
+def _detail_lines(result: "Dict[str, Any]", limit: int) -> "List[str]":
+    if not (result["detail_vanished"] or result["detail_appeared"]):
+        return []
+    lines = ["", "DETAIL PAGES (share of listings with a synopsis, runtime, director or cast):"]
+    for key, word in (("detail_vanished", "VANISHED "), ("detail_appeared", "appeared ")):
+        lines += [f"  {word} {venue}: {before:.0%} → {after:.0%} of {n}" for venue, before, after, n in result[key][:limit]]
+    return lines
+
+
+def _field_totals(venues: "Dict[str, Any]") -> "Dict[str, Dict[str, Any]]":
+    totals: "Dict[str, Dict[str, Any]]" = defaultdict(lambda: {"lost": 0, "gained": 0, "changed": 0, "venues": []})
+    for venue, v in venues.items():
+        for field, counts in v["fields"].items():
+            for k in ("lost", "gained", "changed"):
+                totals[field][k] += counts[k]
+            moved = counts["lost"] + counts["gained"] + counts["changed"]
+            if moved >= FIELD_MOVE_MIN:
+                totals[field]["venues"].append((moved, venue, counts))
+    return totals
+
+
+def _field_lines(venues: "Dict[str, Any]") -> "List[str]":
+    totals = _field_totals(venues)
+    if not totals:
+        return []
+    lines = ["", "FIELDS on listings in both (lost / gained / changed), the venues moving most:"]
+    for field, total in sorted(totals.items(), key=lambda kv: -(kv[1]["lost"] + kv[1]["gained"] + kv[1]["changed"])):
+        top = sorted(total["venues"], key=lambda t: (-t[0], t[1]))[:3]
+        where = "; ".join(f"{venue} {c['lost']}/{c['gained']}/{c['changed']}" for _, venue, c in top)
+        lines.append(f"  {field:<16} {total['lost']:>5} / {total['gained']:>5} / {total['changed']:>5}" + (f"   {where}" if where else ""))
+    return lines
+
+
+def _origin_lines(origins: "Optional[List[Dict[str, Any]]]", limit: int) -> "List[str]":
+    if origins is None:
+        return ["", "ORIGINS: not compared (no enrichment tree for one of the runs)"]
+    if not origins:
+        return ["", "ORIGINS: no refusal share moved"]
+    lines = ["", "ORIGINS whose refusals moved (refused / asked, before → after; tree files):"]
+    return lines + [f"  {m['verdict'].upper():<14} {m['origin']}: {m['before']} → {m['after']}; tree {m['tree'][0]} → {m['tree'][1]}"
+                    + (f"; {m['refusals']}" if m["refusals"] else "") for m in origins[:limit]]
+
+
+def _marker_lines(result: "Dict[str, Any]", labels: "Tuple[str, str]", limit: int) -> "List[str]":
+    lines: "List[str]" = []
+    for kind, label in (("new", labels[1]), ("gone", labels[0])):
+        found = result["markers"][kind]
+        if found:
+            lines += ["", f"MARKER SPELLINGS {kind.upper()} in {label}:"]
+            lines += [f"  {marker:<12} {_quote(spelling)}  e.g. " + "; ".join(f"{v}: {_quote(t)}" for v, t in examples)
+                      for marker, spelling, examples in found[:limit * 2]]
+            lines += [f"  … {len(found) - limit * 2} more"] if len(found) > limit * 2 else []
+    return lines
+
+
+def _venue_name_lines(result: "Dict[str, Any]", limit: int) -> "List[str]":
+    if not (result["venues_added"] or result["venues_lost"]):
+        return []
+    return ["", f"VENUES added: {_names(result['venues_added'], limit)}", f"VENUES lost:  {_names(result['venues_lost'], limit)}"]
+
+
+def _venue_detail_lines(venues: "Dict[str, Any]") -> "List[str]":
+    """With a venue filter: each venue's listings added, lost, re-spelled, re-titled and its field counts."""
+    lines: "List[str]" = []
+    for venue, v in sorted(venues.items()):
+        lines += ["", f"-- {venue} ({v['listings'][0]} → {v['listings'][1]} listings; with detail {v['detail'][0]:.0%} → {v['detail'][1]:.0%})"]
+        lines += [f"  + {t}" for t in v["added"]] + [f"  - {t}" for t in v["lost"]]
+        lines += [f"  ~ {_quote(o)} → {_quote(n)} ({', '.join(ks)})" for o, n, ks in v["respelled"]]
+        lines += [f"  ~ {_quote(o)} → {_quote(n)} (re-titled, same showtimes)" for o, n in v["retitled"]]
+        lines += [f"  {field}: lost {c['lost']}, gained {c['gained']}, changed {c['changed']}" for field, c in sorted(v["fields"].items())]
+    return lines
+
+
+def _busiest_lines(venues: "Dict[str, Any]", limit: int) -> "List[str]":
+    moved = lambda d: len(d["added"]) + len(d["lost"]) + len(d["respelled"]) + len(d["retitled"])  # noqa: E731
+    busiest = sorted(((v, d) for v, d in venues.items() if moved(d)), key=lambda kv: -moved(kv[1]))[:limit]
+    if not busiest:
+        return []
+    lines = ["", "VENUES moving most (added / lost / re-spelled / re-titled; --venue X lists them):"]
+    return lines + [f"  {venue}: {len(d['added'])} / {len(d['lost'])} / {len(d['respelled'])} / {len(d['retitled'])}" for venue, d in busiest]
+
+
+def _title_view_lines(a: "List[Dict[str, Any]]", b: "List[Dict[str, Any]]", venue_filter: "Optional[str]",
+                      title_filter: "Optional[str]", labels: "Tuple[str, str]") -> "List[str]":
+    if not title_filter:
+        return []
+    return [f"LISTINGS billed with {_quote(title_filter)}:", *listing_view(a, b, venue_filter, title_filter, labels), ""]
+
+
+def report(cc: str, a: "List[Dict[str, Any]]", b: "List[Dict[str, Any]]", origins_a: "Optional[Dict[str, Any]]",
+           origins_b: "Optional[Dict[str, Any]]", venue_filter: "Optional[str]" = None, limit: int = 15,
+           coverage: "Optional[Tuple[Dict[str, Any], Dict[str, Any]]]" = None, labels: "Tuple[str, str]" = ("A", "B"),
+           title_filter: "Optional[str]" = None) -> str:
     """The text report for one country; `a`/`b` corpora, `origins_*` manifests (None: not compared). With
     `title_filter`, the matching listings first, one by one."""
     result = compare_corpus(a, b, venue_filter)
     venues = result["venues"]
     lines = [f"== {cc.upper()}  {labels[0]} → {labels[1]}" + (f"  (venues matching {_quote(venue_filter)})" if venue_filter else "")]
-    if title_filter:
-        lines.append(f"LISTINGS billed with {_quote(title_filter)}:")
-        lines.extend(listing_view(a, b, venue_filter, title_filter, labels))
-        lines.append("")
-
-    n_added = sum(len(v["added"]) for v in venues.values())
-    n_lost = sum(len(v["lost"]) for v in venues.values())
+    lines += _title_view_lines(a, b, venue_filter, title_filter, labels)
     respelled = [(venue, *r) for venue, v in venues.items() for r in v["respelled"]]
     retitled = [(venue, *r) for venue, v in venues.items() for r in v["retitled"]]
-    kinds = Counter(k for *_, ks in respelled for k in ks)
-    lines.append(f"listings: {n_added} added, {n_lost} lost, {len(respelled)} RE-SPELLED"
-                 + (f" ({', '.join(f'{k} {n}' for k, n in kinds.most_common())})" if kinds else "")
-                 + f", {len(retitled)} RE-TITLED (same showtimes) at {len(venues)} venues in both; venues added {len(result['venues_added'])}, lost {len(result['venues_lost'])}")
-    if coverage:
-        lines.append("prod coverage: " + ", ".join(f"{k} {coverage[0].get(k)}→{coverage[1].get(k)}"
-                                                   for k in sorted(set(coverage[0]) | set(coverage[1]))
-                                                   if k != "recordedAt" and coverage[0].get(k) != coverage[1].get(k)))
-
-    verdicts = []
-    if respelled:
-        verdicts.append(f"{len(respelled)} re-spelled listings")
-    if retitled:
-        verdicts.append(f"{len(retitled)} re-titled listings")
-    if result["detail_vanished"]:
-        verdicts.append(f"detail pages vanished at {len(result['detail_vanished'])} venues")
-    origins = compare_origins(origins_a, origins_b) if origins_a is not None and origins_b is not None else None
-    if origins:
-        verdicts.append(f"{len(origins)} origins' refusals moved")
-    if result["markers"]["new"]:
-        verdicts.append(f"{len(result['markers']['new'])} new marker spellings")
-    lines.append("NEW DATA: " + "; ".join(verdicts) if verdicts else
-                 "no re-spelling, vanished detail, origin or marker change: a moved take is more likely the CODE's")
-
-    if respelled:
-        lines.append("")
-        lines.append("RE-SPELLED (same listing, another spelling):")
-        groups = defaultdict(list)
-        for venue, old, new, ks in respelled:
-            groups[(old, new, tuple(ks))].append(venue)
-        for (old, new, ks), at in sorted(groups.items(), key=lambda kv: -len(kv[1]))[:limit]:
-            lines.append(f"  RE-SPELLED ({', '.join(ks)}) at {len(at)} venue(s) [{_names(at, 3)}]")
-            lines.append(f"      {_quote(old)}")
-            lines.append(f"    → {_quote(new)}")
-        if len(groups) > limit:
-            lines.append(f"  … {len(groups) - limit} more")
-
-    if retitled:
-        lines.append("")
-        lines.append("RE-TITLED (the same showtimes under another title):")
-        for venue, old, new in retitled[:limit]:
-            lines.append(f"  {venue}: {_quote(old)} → {_quote(new)}")
-        if len(retitled) > limit:
-            lines.append(f"  … {len(retitled) - limit} more")
-
-    if result["detail_vanished"] or result["detail_appeared"]:
-        lines.append("")
-        lines.append("DETAIL PAGES (share of listings with a synopsis, runtime, director or cast):")
-        for venue, before, after, n in result["detail_vanished"][:limit]:
-            lines.append(f"  VANISHED  {venue}: {before:.0%} → {after:.0%} of {n}")
-        for venue, before, after, n in result["detail_appeared"][:limit]:
-            lines.append(f"  appeared  {venue}: {before:.0%} → {after:.0%} of {n}")
-
-    field_totals = defaultdict(lambda: {"lost": 0, "gained": 0, "changed": 0, "venues": []})
-    for venue, v in venues.items():
-        for field, counts in v["fields"].items():
-            total = field_totals[field]
-            for k in ("lost", "gained", "changed"):
-                total[k] += counts[k]
-            moved = counts["lost"] + counts["gained"] + counts["changed"]
-            if moved >= FIELD_MOVE_MIN:
-                total["venues"].append((moved, venue, counts))
-    if field_totals:
-        lines.append("")
-        lines.append("FIELDS on listings in both (lost / gained / changed), the venues moving most:")
-        for field, total in sorted(field_totals.items(), key=lambda kv: -(kv[1]["lost"] + kv[1]["gained"] + kv[1]["changed"])):
-            top = sorted(total["venues"], key=lambda t: (-t[0], t[1]))[:3]
-            where = "; ".join(f"{venue} {c['lost']}/{c['gained']}/{c['changed']}" for _, venue, c in top)
-            lines.append(f"  {field:<16} {total['lost']:>5} / {total['gained']:>5} / {total['changed']:>5}" + (f"   {where}" if where else ""))
-
-    if origins is None:
-        lines.append("")
-        lines.append("ORIGINS: not compared (no enrichment tree for one of the runs)")
-    elif origins:
-        lines.append("")
-        lines.append("ORIGINS whose refusals moved (refused / asked, before → after; tree files):")
-        for m in origins[:limit]:
-            lines.append(f"  {m['verdict'].upper():<14} {m['origin']}: {m['before']} → {m['after']}; tree {m['tree'][0]} → {m['tree'][1]}"
-                         + (f"; {m['refusals']}" if m["refusals"] else ""))
-    else:
-        lines.append("")
-        lines.append("ORIGINS: no refusal share moved")
-
-    for kind in ("new", "gone"):
-        found = result["markers"][kind]
-        if not found:
-            continue
-        lines.append("")
-        lines.append(f"MARKER SPELLINGS {kind.upper()} in {labels[1] if kind == 'new' else labels[0]}:")
-        for marker, spelling, examples in found[:limit * 2]:
-            lines.append(f"  {marker:<12} {_quote(spelling)}  e.g. " + "; ".join(f"{v}: {_quote(t)}" for v, t in examples))
-        if len(found) > limit * 2:
-            lines.append(f"  … {len(found) - limit * 2} more")
-
-    if result["venues_added"] or result["venues_lost"]:
-        lines.append("")
-        lines.append(f"VENUES added: {_names(result['venues_added'], limit)}")
-        lines.append(f"VENUES lost:  {_names(result['venues_lost'], limit)}")
-
-    if venue_filter:
-        for venue, v in sorted(venues.items()):
-            lines.append("")
-            lines.append(f"-- {venue} ({v['listings'][0]} → {v['listings'][1]} listings; with detail "
-                         f"{v['detail'][0]:.0%} → {v['detail'][1]:.0%})")
-            lines.extend(f"  + {t}" for t in v["added"])
-            lines.extend(f"  - {t}" for t in v["lost"])
-            lines.extend(f"  ~ {_quote(o)} → {_quote(n)} ({', '.join(ks)})" for o, n, ks in v["respelled"])
-            lines.extend(f"  ~ {_quote(o)} → {_quote(n)} (re-titled, same showtimes)" for o, n in v["retitled"])
-            for field, c in sorted(v["fields"].items()):
-                lines.append(f"  {field}: lost {c['lost']}, gained {c['gained']}, changed {c['changed']}")
-    elif venues:
-        busiest = sorted(venues.items(), key=lambda kv: -(len(kv[1]["added"]) + len(kv[1]["lost"]) + len(kv[1]["respelled"]) + len(kv[1]["retitled"])))
-        busiest = [(v, d) for v, d in busiest if d["added"] or d["lost"] or d["respelled"] or d["retitled"]][:limit]
-        if busiest:
-            lines.append("")
-            lines.append("VENUES moving most (added / lost / re-spelled / re-titled; --venue X lists them):")
-            for venue, d in busiest:
-                lines.append(f"  {venue}: {len(d['added'])} / {len(d['lost'])} / {len(d['respelled'])} / {len(d['retitled'])}")
+    origins = None if origins_a is None or origins_b is None else compare_origins(origins_a, origins_b)
+    lines += _summary_lines(result, respelled, retitled) + _coverage_lines(coverage)
+    lines += _verdict_lines(result, respelled, retitled, origins)
+    lines += _respelled_lines(respelled, limit) + _retitled_lines(retitled, limit) + _detail_lines(result, limit)
+    lines += _field_lines(venues) + _origin_lines(origins, limit) + _marker_lines(result, labels, limit)
+    lines += _venue_name_lines(result, limit)
+    lines += _venue_detail_lines(venues) if venue_filter else _busiest_lines(venues, limit)
     return "\n".join(lines) + "\n"
 
 
