@@ -16,6 +16,7 @@ TOOL = cli_harness.tool_path("scripts/ci/convergence_preflight.py", "scripts/ci/
 GH = r"""
 case "$1 $2" in
     "release view") [ -f "$STUB/release-fails" ] && { echo "HTTP 502" >&2; exit 1; }
+        [ "$3" = identity-recordings ] && [ -f "$STUB/archive-fails" ] && { echo "HTTP 504" >&2; exit 1; }
         [ "$3" = identity-recordings ] && [ -f "$STUB/archived" ] && { cat "$STUB/archived"; exit 0; }
         cat "$STUB/assets" ;;
     "release download")
@@ -102,6 +103,16 @@ class ConvergencePreflightTest(cli_harness.ToolCase):
         self.write("stub/archived", "enrichment-de-528.tar.zst\nscrapes-de-528.tar.gz\n")
         self.assertEqual(0, self.preflight("de", "528"), self.out)
         self.assertEqual([], [c for c in self.fakes.calls("gh") if c[0] == "api"])
+
+    def test_an_unreadable_archive_is_no_evidence_an_archived_recording_is_gone(self) -> None:
+        # Identity model convergence #1505: the archive read failed, the archived run 573 is no run of this forge's
+        # API, and five legs whose pair the archive held were refused.
+        self.write("stub/archive-fails", "")
+        os.remove(self.path("stub/runs/573"))
+        self.assertEqual(0, self.preflight("pl,de"), self.out)
+        self.assertEqual(1, self.said("::warning::could not read release identity-recordings (HTTP 504"))
+        self.assertEqual(1, self.said("::warning::recording run 573 is no run of this forge's and the archive was not "
+                                      "read -- not checked"))
 
     def test_the_artifacts_of_a_run_are_listed_once_for_every_country(self) -> None:
         self.assertEqual(0, self.preflight("pl,de"), self.out)

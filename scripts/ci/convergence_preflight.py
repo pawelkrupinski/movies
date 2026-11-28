@@ -50,6 +50,7 @@ class Preflight:
         self.assets: List[str] = []
         self.archived: List[str] = []
         self.assets_known = True
+        self.archive_known = True
         self.listings: Dict[str, List[str]] = {}
         self.status: Dict[str, int] = {}
         self.warned: Dict[str, bool] = {}
@@ -75,8 +76,15 @@ class Preflight:
                       "checked here")
             self.assets_known = False
         self.assets = assets or []
-        # An unreadable archive only means the rolling release and the artifacts are checked alone.
-        self.archived = self.release(self.env.get("RECORDING_ARCHIVE_TAG") or "identity-recordings") or []
+        # An unreadable archive is no evidence a recording is gone: a run the forge's API does not know (the archive
+        # keeps the github.com-era ones) is then not checked (Identity model convergence #1505).
+        archive = self.env.get("RECORDING_ARCHIVE_TAG") or "identity-recordings"
+        archived = self.release(archive)
+        if archived is None:
+            self.warn(f"could not read release {archive} ({said(self.last_error)}) -- the recordings it keeps are not "
+                      "checked")
+            self.archive_known = False
+        self.archived = archived or []
 
     def has_asset(self, pattern: str) -> bool:
         return any(fnmatch.fnmatchcase(n, pattern) for n in self.assets + self.archived)
@@ -103,6 +111,10 @@ class Preflight:
             if f"scrape-fixtures-{code}" not in self.listings[run]:
                 self.error(f"{what}: recording run {run} holds no scrape-fixtures-{code} (its artifacts expired or were "
                            "deleted) -- re-run Record scrape fixtures, or measure a recording this forge holds")
+        elif status == ABSENT and not self.archive_known:
+            if not self.warned.get(run):
+                self.warn(f"recording run {run} is no run of this forge's and the archive was not read -- not checked")
+                self.warned[run] = True
         elif status == ABSENT:
             self.error(f"{what}: recording run {run} is not on this forge (a github.com-era run?) -- measure the pinned "
                        "pair or a recording this forge holds")
