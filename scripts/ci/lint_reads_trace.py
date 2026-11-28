@@ -40,6 +40,7 @@ import subprocess
 import sys
 import tempfile
 from concurrent.futures import ThreadPoolExecutor
+from typing import Dict, Iterable, List, Optional, Set, Tuple
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
 from governor.tool_pool import governed_workers  # noqa: E402  (THE GOVERNED FAN-OUT: the hook runs under a governor ticket)
@@ -66,22 +67,29 @@ def tracked():
     return files, sorted({a for p in files for a in ancestors(p)})
 
 
-def resource_copies(files):
-    """{copy under target/: the tracked resource sbt copied there}: `<m>/src/<config>/resources/<rel>` is served from
-    `<m>/target/scala-*/<classes>/<rel>` (main: classes, else <config>-classes)."""
-    out, by_module = {}, collections.defaultdict(list)
+def _resources_by_module(files: List[str]) -> Dict[str, List[Tuple[str, str, str]]]:
+    """{module: [(config, path relative to its resources, tracked path)]} of every `<m>/src/<config>/resources/<rel>`."""
+    by_module: Dict[str, List[Tuple[str, str, str]]] = collections.defaultdict(list)
     for p in files:
         parts = p.split("/")
         if len(parts) > 4 and parts[1] == "src" and parts[3] == "resources":
             by_module[parts[0]].append((parts[2], "/".join(parts[4:]), p))
-    for module, rows in by_module.items():
-        target = os.path.join(module, "target")
-        for scala in (d for d in (os.listdir(target) if os.path.isdir(target) else []) if d.startswith("scala-")):
-            for config, rel, path in rows:
-                copy = os.path.join(target, scala, "classes" if config == "main" else f"{config}-classes", rel)
-                if os.path.isfile(copy):
-                    out[copy] = path
-    return out
+    return by_module
+
+
+def _scala_targets(module: str) -> List[str]:
+    target = os.path.join(module, "target")
+    return [d for d in (os.listdir(target) if os.path.isdir(target) else []) if d.startswith("scala-")]
+
+
+def resource_copies(files: List[str]) -> Dict[str, str]:
+    """{copy under target/: the tracked resource sbt copied there}: `<m>/src/<config>/resources/<rel>` is served from
+    `<m>/target/scala-*/<classes>/<rel>` (main: classes, else <config>-classes)."""
+    candidates = {os.path.join(module, "target", scala, "classes" if config == "main" else f"{config}-classes", rel): path
+                  for module, rows in _resources_by_module(files).items()
+                  for scala in _scala_targets(module)
+                  for config, rel, path in rows}
+    return {copy: path for copy, path in candidates.items() if os.path.isfile(copy)}
 
 
 def is_main_copy(path):
@@ -159,19 +167,29 @@ def green(run):
     return run.returncode == 0 and "*** RUN ABORTED ***" not in run.stdout and "Suites: completed 0" not in run.stdout
 
 
-def classpaths(modules, given):
-    found = {}
-    if given:
-        with open(given) as f:
-            found = dict(line.rstrip("\n").split("\t", 1) for line in f if "\t" in line)
+def _given_classpaths(path: Optional[str]) -> Dict[str, str]:
+    """The `<module>TAB<classpath>` lines of `--classpaths`."""
+    if not path:
+        return {}
+    with open(path) as f:
+        return dict(line.rstrip("\n").split("\t", 1) for line in f if "\t" in line)
+
+
+def _exported_classpaths(missing: List[str]) -> Dict[str, str]:
+    """The Test classpaths of `missing` modules, from one sbt-warm export; exits where it could not."""
+    run = subprocess.run(["scripts/sbt-warm", *[f"export {m}/Test/fullClasspath" for m in missing]],
+                         capture_output=True, text=True)
+    cps = [line for line in (x.replace("\x1b[0J", "") for x in run.stdout.splitlines()) if line.startswith("/") and ":" in line]
+    if run.returncode != 0 or len(cps) != len(missing):
+        sys.exit(f"lint_reads_trace: could not export the classpaths of {' '.join(missing)}")
+    return dict(zip(missing, cps))
+
+
+def classpaths(modules: List[str], given: Optional[str]) -> Dict[str, str]:
+    found = _given_classpaths(given)
     missing = [m for m in modules if m not in found]
     if missing:
-        run = subprocess.run(["scripts/sbt-warm", *[f"export {m}/Test/fullClasspath" for m in missing]],
-                             capture_output=True, text=True)
-        cps = [l for l in (x.replace("\x1b[0J", "") for x in run.stdout.splitlines()) if l.startswith("/") and ":" in l]
-        if run.returncode != 0 or len(cps) != len(missing):
-            sys.exit(f"lint_reads_trace: could not export the classpaths of {' '.join(missing)}")
-        found.update(zip(missing, cps))
+        found.update(_exported_classpaths(missing))
     return found
 
 
@@ -204,25 +222,42 @@ def ancestors(path):
     return ["/".join(parts[:i]) for i in range(1, len(parts))]
 
 
-def generalised(directories, tree):
+def _as_regex(pattern: str) -> "re.Pattern[str]":
+    return re.compile(re.escape(pattern).replace(r"\*", "[^/]+") + "$")
+
+
+def _shared_by_segment(out: Set[str], position: int) -> Dict[Tuple[str, ...], Set[str]]:
+    """{the pattern with the segment at `position` as `*`: the segment values sharing the rest} of the `<m>/src/...` dirs."""
+    shared: Dict[Tuple[str, ...], Set[str]] = collections.defaultdict(set)
+    for d in out:
+        parts = d.split("/")
+        if len(parts) > 2 and parts[1] == "src":
+            shared[tuple(parts[:position]) + ("*",) + tuple(parts[position + 1:])].add(parts[position])
+    return shared
+
+
+def _generalise_at(out: Set[str], position: int, tree: Iterable[str]) -> Set[str]:
+    """`out` with the segment at `position` (0: the module, 2: the source config) read as `*` where GENERALISE_AT or more
+    share the rest; a config only when every config of the tree the pattern names was walked."""
+    def walked(d: str) -> bool:
+        return any(_as_regex(o).match(x) for o in out for x in [d, *ancestors(d)])
+    for key, values in _shared_by_segment(out, position).items():
+        matches = _as_regex("/".join(key))
+        if len(values) >= GENERALISE_AT and (position == 0 or all(walked(d) for d in tree if matches.match(d))):
+            out = {d for d in out if not matches.match(d)} | {"/".join(key)}
+    return out
+
+
+def generalised(directories: Iterable[str], tree: Iterable[str]) -> Set[str]:
     """The walked directories with a module segment read as `*` once GENERALISE_AT or more modules share the rest
     (`<m>/src/main/scala` -> `*/src/main/scala`: a walk declared over a few modules' trees reads a little wider, never
     narrower -- but never `*/src`, every module's every tree), then a source config (`*/src/<config>/...`) read as `*`
     when every config of the tree the pattern names was walked (a test-tree scan stays one: no production change
     selects it)."""
+    tree = list(tree)
     out = set(directories)
-    as_regex = lambda pattern: re.compile(re.escape(pattern).replace(r"\*", "[^/]+") + "$")
-    walked = lambda d: any(as_regex(o).match(x) for o in out for x in [d, *ancestors(d)])
     for position in (0, 2):
-        shared = collections.defaultdict(set)
-        for d in out:
-            parts = d.split("/")
-            if len(parts) > 2 and parts[1] == "src":
-                shared[tuple(parts[:position]) + ("*",) + tuple(parts[position + 1:])].add(parts[position])
-        for key, values in shared.items():
-            matches = as_regex("/".join(key))
-            if len(values) >= GENERALISE_AT and (position == 0 or all(walked(d) for d in tree if matches.match(d))):
-                out = {d for d in out if not matches.match(d)} | {"/".join(key)}
+        out = _generalise_at(out, position, tree)
     return out
 
 
@@ -235,18 +270,20 @@ def compacted(files):
     return _compacted(out) | (set(files) - out)
 
 
-def _compacted(files):
-    out, level = set(files), 0
-    while level < 2:
-        by_parent = collections.defaultdict(set)
-        for p in out:
-            if "/" in p.rstrip("/*").rstrip("/"):
-                by_parent[os.path.dirname(p[:-2] if p.endswith("/*") else p)].add(p)
-        at = COMPACT_AT if level == 0 else GENERALISE_AT
-        for parent, members in by_parent.items():
-            if len(members) >= at and parent:
-                out = (out - members) | {parent + "/*"}
-        level += 1
+def _compact_level(out: Set[str], at: int) -> Set[str]:
+    """`out` with each directory holding `at` or more of its entries read as `<dir>/*`."""
+    by_parent: Dict[str, Set[str]] = collections.defaultdict(set)
+    for p in out:
+        if "/" in p.rstrip("/*").rstrip("/"):
+            by_parent[os.path.dirname(p[:-2] if p.endswith("/*") else p)].add(p)
+    for parent, members in by_parent.items():
+        if len(members) >= at and parent:
+            out = (out - members) | {parent + "/*"}
+    return out
+
+
+def _compacted(files: Iterable[str]) -> Set[str]:
+    out = _compact_level(_compact_level(set(files), COMPACT_AT), GENERALISE_AT)
     return {p for p in out if not any(p != q and q.endswith("/*") and p.startswith(q[:-1]) for q in out)}
 
 
@@ -254,42 +291,66 @@ def extension(path):
     return os.path.splitext(path)[1]
 
 
-def suggest(observed, files):
+def _resolving(listed: Set[str]) -> Set[str]:
+    """The directories listed only to resolve `*/src/*/scala`: a module's `<m>/src` and, when listed, its `<m>`."""
+    resolving = {d for d in listed if re.fullmatch(r"[^/]+/src", d)}
+    return resolving | {d.split("/")[0] for d in resolving if d.split("/")[0] in listed}
+
+
+def _listed_roots(reads: List[str]) -> Set[str]:
+    """The topmost directories a spec listed, less the module directories and `<m>/src` it listed only to resolve
+    `*/src/*/scala` (SourceTrees) when it went deeper: what the walk read is, and a new module's tree is read by the `*`
+    its row's module segment generalises to."""
+    listed = {p.rstrip("/") for p in reads if p.endswith("/")}
+    resolving = _resolving(listed)
+    listed -= {d for d in resolving if any(q.startswith(d + "/") and q.rstrip("/") not in resolving for q in reads)}
+    return {d for d in listed if not any(a in listed for a in ancestors(d))}
+
+
+def _filters_by_kind(top: Set[str], read: Set[str], under: Dict[str, Set[str]], kinds: Set[str]) -> bool:
+    """Whether a walk of `top` reading `kinds` left some file unread and read exactly those kinds' files under each
+    directory it walked (a file filter seen), rather than every file or none by kind."""
+    if not kinds or "" in kinds or all(read >= under[d] for d in top):
+        return False
+    return all(read & under[d] == {f for f in under[d] if extension(f) in kinds} for d in top)
+
+
+def _kinds_read(top: Set[str], read: Set[str], under: Dict[str, Set[str]]) -> Set[str]:
+    """The extensions a walk of `top` kept, or {""} when it read whole (no file left unread: no filter seen) or not by
+    kind. A walk keeping some kinds of file reads, under every directory it walked, exactly those kinds' files there --
+    `<dir>/*.<ext>`, a new file of another kind no read of it. A kind read is its family: a walk keeping `.yml` keeps
+    `.yaml` (RepoFile.workflows), one keeping `.scala` may keep `.java`, though the tree holds none of the other today."""
+    kinds = {extension(p) for d in top for p in read & under[d]}
+    kinds = kinds if _filters_by_kind(top, read, under, kinds) else {""}
+    return {k for kind in kinds for k in KIND_FAMILIES.get(kind, (kind,))}
+
+
+def _globs(top: Set[str], kinds: Set[str], under: Dict[str, Set[str]]) -> List[str]:
+    """`<dir>/*<kind>` for each walked directory and kind: a whole-tree walk (NoEnvLocalReadersSpec: every file of 13
+    kinds, wherever it is) reads those kinds anywhere."""
+    whole = kinds != {""} and len({d for d in top if "/" not in d}) >= WHOLE_TREE_AT
+    dirs = {""} if whole else generalised(top, under)
+    return sorted({(d + "/" if d else "") + "*" + kind for d in dirs for kind in kinds})
+
+
+def _spec_reads(reads: List[str], under: Dict[str, Set[str]]) -> List[str]:
+    """The reads one spec's row wants (`suggest`)."""
+    top = _listed_roots(reads)
+    read = {p for p in reads if not p.endswith("/")}
+    by_name = compacted({p for p in read if not any(a in top for a in ancestors(p))})
+    return _globs(top, _kinds_read(top, read, under), under) + sorted(by_name) or ["@code"]
+
+
+def suggest(observed: Dict[str, List[str]], files: List[str]) -> Dict[str, List[str]]:
     """{spec: the reads its row wants} from {spec: observed reads} (a listed directory with a trailing /) over the
     tracked files. A listed directory is read as `<dir>/*` -- or as `<dir>/*.<ext>` for each extension the spec read
     anywhere, when what it read under every walked directory is exactly the files of those extensions there and it left
     some file unread (a walk keeping `.scala`; one reading every file it lists reads a new kind too)."""
-    out = {}
-    under = collections.defaultdict(set)
+    under: Dict[str, Set[str]] = collections.defaultdict(set)
     for f in files:
         for a in ancestors(f):
             under[a].add(f)
-    for spec, reads in observed.items():
-        listed = {p.rstrip("/") for p in reads if p.endswith("/")}
-        # a module's directory and its src/, listed to resolve `*/src/*/scala` (SourceTrees), are no read of their own
-        # when the spec went deeper: what the walk read is, and a new module's tree is read by the `*` its row's module
-        # segment generalises to
-        resolving = {d for d in listed if re.fullmatch(r"[^/]+/src", d)}
-        resolving |= {d.split("/")[0] for d in resolving if d.split("/")[0] in listed}
-        listed -= {d for d in resolving if any(q.startswith(d + "/") and q.rstrip("/") not in resolving for q in reads)}
-        top = {d for d in listed if not any(a in listed for a in ancestors(d))}
-        read = {p for p in reads if not p.endswith("/")}
-        # a walk keeping some kinds of file (`.scala`): what it read under every directory it walked is exactly those
-        # kinds' files there -- read as `<dir>/*.<ext>`, a new file of another kind no read of it
-        kinds = {extension(p) for d in top for p in read & under[d]}
-        if not kinds or "" in kinds or all(read >= under[d] for d in top) \
-                or any(read & under[d] != {f for f in under[d] if extension(f) in kinds} for d in top):
-            kinds = {""}  # read whole (no file left unread: no filter seen), or not by kind
-        # a kind read is its family: a walk keeping `.yml` keeps `.yaml` (RepoFile.workflows), one keeping `.scala`
-        # may keep `.java`, though the tree holds none of the other today
-        kinds = {k for kind in kinds for k in KIND_FAMILIES.get(kind, (kind,))}
-        # a walk of the whole tree (NoEnvLocalReadersSpec: every file of 13 kinds, wherever it is): those kinds anywhere
-        whole = kinds != {""} and len({d for d in top if "/" not in d}) >= WHOLE_TREE_AT
-        dirs = {""} if whole else generalised(top, under)
-        globs = {(d + "/" if d else "") + "*" + kind for d in dirs for kind in kinds}
-        out[spec] = sorted(globs) + sorted(compacted({p for p in read if not any(a in top for a in ancestors(p))})) \
-            or ["@code"]
-    return out
+    return {spec: _spec_reads(reads, under) for spec, reads in observed.items()}
 
 
 def read_observed(path):
@@ -304,42 +365,74 @@ def read_observed(path):
     return observed
 
 
-def main(args):
-    if args[:1] == ["--suggest"] and len(args) == 2:
-        for spec, reads in sorted(suggest(read_observed(args[1]), tracked()[0]).items()):
-            print(f"{spec}\t{' '.join(reads)}")
-        return 0
+def _options(args: List[str]) -> Tuple[Optional[str], Optional[str], List[str]]:
+    """(--classpaths file, --out file, the rest) of the arguments."""
     given = out_path = None
     while args[:1] in (["--classpaths"], ["--out"]) and len(args) > 1:
         given, out_path = (args[1], out_path) if args[0] == "--classpaths" else (given, args[1])
         args = args[2:]
-    specs = registry_specs() if args == ["--all"] else args
+    return given, out_path, args
+
+
+def _trace_spec(spec: str, classpath: str, watched: List[str], copies: Dict[str, str]) -> Tuple[List[str], bool]:
+    """(what both of two runs of `spec` opened, whether both ran green)."""
+    runs = [observe(spec_command(spec, classpath), watched, copies, SPEC_CWD.get(spec.split(":", 1)[0])) for _ in range(2)]
+    green_both = all(green(run) for _, run in runs)
+    if not green_both:
+        print(f"lint_reads_trace: {spec} did not run green; its reads are partial:\n{runs[0][1].stdout[-2000:]}",
+              file=sys.stderr)
+    both = set(runs[0][0]) & set(runs[1][0])
+    return sorted(p + "/" if os.path.isdir(p) else p for p in both), green_both
+
+
+def _write_observed(path: str, observed: Dict[str, List[str]]) -> None:
+    with open(path, "w") as f:
+        f.write("".join(f"{spec}\t{p}\n" for spec, reads in observed.items() for p in reads)
+                + "".join(f"{spec}\t\n" for spec, reads in observed.items() if not reads))
+
+
+def _trace_all(specs: List[str], cps: Dict[str, str]) -> Tuple[Dict[str, List[str]], List[str]]:
+    """({spec: what it opened}, the specs that did not run green)."""
+    files, dirs = tracked()
+    copies = resource_copies(files)
+    watched = files + dirs + list(copies)
+    observed: Dict[str, List[str]] = {}
+    broken: List[str] = []
+    for spec in specs:
+        observed[spec], green_both = _trace_spec(spec, cps[spec.split(":", 1)[0]], watched, copies)
+        if not green_both:
+            broken.append(spec)
+        print(f"traced {spec}: {len(observed[spec])} reads", file=sys.stderr)
+    return observed, broken
+
+
+def _suggest_command(path: str) -> int:
+    for spec, reads in sorted(suggest(read_observed(path), tracked()[0]).items()):
+        print(f"{spec}\t{' '.join(reads)}")
+    return 0
+
+
+def _usable(specs: List[str]) -> int:
+    """0 when `specs` can be traced here; else 2, having said why."""
     if not specs or any(":" not in s for s in specs):
         print(__doc__, file=sys.stderr)
         return 2
     why = blind(atime_moves())
     if why:
         print(f"lint_reads_trace: cannot trace here: {why}; run it on the laptop (APFS)", file=sys.stderr)
+    return 2 if why else 0
+
+
+def main(args: List[str]) -> int:
+    if args[:1] == ["--suggest"] and len(args) == 2:
+        return _suggest_command(args[1])
+    given, out_path, args = _options(args)
+    specs = registry_specs() if args == ["--all"] else args
+    if _usable(specs):
         return 2
-    cps = classpaths(sorted({s.split(":", 1)[0] for s in specs}), given)
-    files, dirs = tracked()
-    copies = resource_copies(files)
-    watched = files + dirs + list(copies)
-    observed, broken = {}, []
-    for spec in specs:
-        module = spec.split(":", 1)[0]
-        runs = [observe(spec_command(spec, cps[module]), watched, copies, SPEC_CWD.get(module)) for _ in range(2)]
-        if not all(green(run) for _, run in runs):
-            broken.append(spec)
-            print(f"lint_reads_trace: {spec} did not run green; its reads are partial:\n{runs[0][1].stdout[-2000:]}",
-                  file=sys.stderr)
-        both = set(runs[0][0]) & set(runs[1][0])
-        observed[spec] = sorted(p + "/" if os.path.isdir(p) else p for p in both)
-        print(f"traced {spec}: {len(observed[spec])} reads", file=sys.stderr)
+    observed, broken = _trace_all(specs, classpaths(sorted({s.split(":", 1)[0] for s in specs}), given))
     if out_path:
-        with open(out_path, "w") as f:
-            f.write("".join(f"{spec}\t{p}\n" for spec, reads in observed.items() for p in reads)
-                    + "".join(f"{spec}\t\n" for spec, reads in observed.items() if not reads))
+        _write_observed(out_path, observed)
     found = misses(observed)
     for line in found:
         print(line)

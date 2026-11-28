@@ -103,11 +103,6 @@ cognitive	scripts/ci/job_metrics.py:main_class	15
 cognitive	scripts/ci/job_metrics.py:summary	17
 cognitive	scripts/ci/junit_failures.py:failed	16
 cognitive	scripts/ci/lint_per_file_check.py:check_command	11
-cognitive	scripts/ci/lint_reads_trace.py:_compacted	19
-cognitive	scripts/ci/lint_reads_trace.py:generalised	14
-cognitive	scripts/ci/lint_reads_trace.py:main	22
-cognitive	scripts/ci/lint_reads_trace.py:resource_copies	21
-cognitive	scripts/ci/lint_reads_trace.py:suggest	14
 cognitive	scripts/ci/python_floor_lint.py:annotations	20
 cognitive	scripts/ci/python_floor_lint.py:newer_fstrings	20
 cognitive	scripts/ci/python_floor_lint.py:python_files	11
@@ -268,12 +263,6 @@ cyclomatic	scripts/ci/job_metrics.py:summary	23
 cyclomatic	scripts/ci/lint_per_file_check.py:check_command	25
 cyclomatic	scripts/ci/lint_per_file_check.py:main	11
 cyclomatic	scripts/ci/lint_per_file_check.py:pairs	11
-cyclomatic	scripts/ci/lint_reads_trace.py:_compacted	14
-cyclomatic	scripts/ci/lint_reads_trace.py:classpaths	14
-cyclomatic	scripts/ci/lint_reads_trace.py:generalised	15
-cyclomatic	scripts/ci/lint_reads_trace.py:main	27
-cyclomatic	scripts/ci/lint_reads_trace.py:resource_copies	13
-cyclomatic	scripts/ci/lint_reads_trace.py:suggest	42
 cyclomatic	scripts/ci/lint_registry_reads.py:misses	15
 cyclomatic	scripts/ci/lint_registry_reads.py:reads	14
 cyclomatic	scripts/ci/python_floor_lint.py:findings_in	16
@@ -420,7 +409,7 @@ pyright	scripts/ci/job_metrics.py	39
 pyright	scripts/ci/junit_failures.py	8
 pyright	scripts/ci/landing_check_for_tree.py	9
 pyright	scripts/ci/lint_per_file_check.py	52
-pyright	scripts/ci/lint_reads_trace.py	65
+pyright	scripts/ci/lint_reads_trace.py	43
 pyright	scripts/ci/python_floor_lint.py	32
 pyright	scripts/ci/ratchet_diff.py	11
 pyright	scripts/ci/reusable_workflow_inputs.py	33
